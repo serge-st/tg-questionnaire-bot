@@ -3,6 +3,7 @@ import { TgBotUppdate } from './tg-bot.update';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { TgBotService } from './tg-bot.service';
+import { UtilsModule } from 'utils/utils.module';
 
 @Module({
   imports: [
@@ -20,6 +21,7 @@ import { TgBotService } from './tg-bot.service';
         };
       },
     }),
+    UtilsModule,
   ],
   providers: [TgBotUppdate, TgBotService],
 })

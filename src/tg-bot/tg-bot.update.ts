@@ -2,6 +2,7 @@ import { Update, Ctx, Start, Help, On, Hears } from 'nestjs-telegraf';
 import { TelegrafContext } from 'tg-bot/types';
 import { TgBotService } from './tg-bot.service';
 import { Logger } from '@nestjs/common';
+import { promises as fs } from 'fs';
 
 @Update()
 export class TgBotUppdate {
@@ -13,7 +14,10 @@ export class TgBotUppdate {
     this.logger.log('-------');
     this.logger.log('start', JSON.stringify(ctx.update, null, 2));
     const userInfo = JSON.stringify(ctx.update, null, 2);
-    this.tgBotService.getHello();
+    await fs.writeFile(
+      'message-data-example.json',
+      JSON.stringify(ctx, null, 2),
+    );
     await ctx.reply(`Welcome 👷🏻 ${userInfo}`);
   }
 
@@ -22,8 +26,9 @@ export class TgBotUppdate {
     await ctx.reply('Send me a sticker');
   }
 
-  @On('sticker')
-  async on(@Ctx() ctx: TelegrafContext) {
+  @On('photo')
+  async onPhoto(@Ctx() ctx: TelegrafContext): Promise<void> {
+    await this.tgBotService.processPhoto(ctx);
     await ctx.reply('👍');
   }
 
