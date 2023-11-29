@@ -4,10 +4,22 @@ import { TgBotService } from './tg-bot.service';
 import { Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 
 @Update()
 export class TgBotUppdate {
   private readonly logger = new Logger(TgBotUppdate.name);
+  private readonly booleanSelector: InlineKeyboardButton[][] = [
+    [{ text: 'Yes ✅', callback_data: 'true' }],
+    [{ text: 'No ❌', callback_data: 'false' }],
+  ];
+  private readonly goalSelector: InlineKeyboardButton[][] = [
+    [{ text: 'Bulk 💪', callback_data: 'bulk' }],
+    [{ text: 'Clean Bulk 🍏💪', callback_data: 'clean bulk' }],
+    [{ text: 'Weight Cutting ⚖️', callback_data: 'cut' }],
+    [{ text: 'Endurance 🏃', callback_data: 'endurance' }],
+    [{ text: 'Recovery after an injury ❤️‍🩹', callback_data: 'recovery' }],
+  ];
 
   constructor(
     private readonly tgBotService: TgBotService,
@@ -18,6 +30,20 @@ export class TgBotUppdate {
   async start(@Ctx() ctx: TelegrafContext) {
     await ctx.reply('Choose a number:', {
       reply_markup: { input_field_placeholder: 'test', force_reply: true },
+    });
+  }
+
+  @Hears('bool')
+  async bool(@Ctx() ctx: TelegrafContext) {
+    await ctx.reply('This is my first cycle:', {
+      reply_markup: { inline_keyboard: this.booleanSelector },
+    });
+  }
+
+  @Hears('goal')
+  async options(@Ctx() ctx: TelegrafContext) {
+    await ctx.reply('Choose your goal:', {
+      reply_markup: { inline_keyboard: this.goalSelector },
     });
   }
 
