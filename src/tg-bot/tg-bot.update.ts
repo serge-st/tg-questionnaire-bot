@@ -10,15 +10,41 @@ import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 export class TgBotUppdate {
   private readonly logger = new Logger(TgBotUppdate.name);
   private readonly booleanSelector: InlineKeyboardButton[][] = [
-    [{ text: 'Yes ✅', callback_data: 'true' }],
-    [{ text: 'No ❌', callback_data: 'false' }],
+    [{ text: 'Yes', callback_data: 'true' }],
+    [{ text: 'No', callback_data: 'false' }],
   ];
   private readonly goalSelector: InlineKeyboardButton[][] = [
-    [{ text: 'Bulk 💪', callback_data: 'bulk' }],
-    [{ text: 'Clean Bulk 🍏💪', callback_data: 'clean bulk' }],
-    [{ text: 'Weight Cutting ⚖️', callback_data: 'cut' }],
-    [{ text: 'Endurance 🏃', callback_data: 'endurance' }],
-    [{ text: 'Recovery after an injury ❤️‍🩹', callback_data: 'recovery' }],
+    [{ text: 'Bulk', callback_data: 'bulk' }],
+    [{ text: 'Clean Bulk', callback_data: 'clean bulk' }],
+    [{ text: 'Weight Cutting', callback_data: 'cut' }],
+    [{ text: 'Endurance', callback_data: 'endurance' }],
+    [{ text: 'Recovery after an injury', callback_data: 'recovery' }],
+  ];
+  private readonly linkButton: InlineKeyboardButton[][] = [
+    [
+      {
+        text: 'Link to the article ↗️',
+        url: 'https://telegra.ph/THREE-CONCEPTS-ON-WHAT-THE-FIRST-CYCLE-OF-STEROIDS-SHOULD-BE-11-28',
+      },
+    ],
+    [{ text: 'Concept of minimalism', callback_data: 'minimalism' }],
+    [{ text: 'Hardcore', callback_data: 'hardcore' }],
+    [{ text: 'Something in between', callback_data: 'average' }],
+  ];
+
+  private readonly urlButton: InlineKeyboardButton[][] = [
+    [
+      {
+        text: 'Link to the article',
+        url: 'https://telegra.ph/THREE-CONCEPTS-ON-WHAT-THE-FIRST-CYCLE-OF-STEROIDS-SHOULD-BE-11-28',
+      },
+    ],
+  ];
+
+  private readonly threeOptions: InlineKeyboardButton[][] = [
+    [{ text: 'Concept of minimalism', callback_data: 'minimalism' }],
+    [{ text: 'Hardcore', callback_data: 'hardcore' }],
+    [{ text: 'Something in between', callback_data: 'average' }],
   ];
 
   constructor(
@@ -44,6 +70,35 @@ export class TgBotUppdate {
   async options(@Ctx() ctx: TelegrafContext) {
     await ctx.reply('Choose your goal:', {
       reply_markup: { inline_keyboard: this.goalSelector },
+    });
+  }
+
+  // `**Choose concept:**
+  // Please read the article where you can learn about 3 possible concepts of building a plan for the first cycle.\n
+  // Please read and choose which one is closer to you.`,
+
+  @Hears('link')
+  async link(@Ctx() ctx: TelegrafContext) {
+    await ctx.reply(
+      '*Choose concept:*\n\nPlease read the article where you can learn about 3 possible concepts of building a plan for the first cycle.\n\nChoose which one is closer to you.',
+      {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: this.linkButton },
+      },
+    );
+  }
+
+  @Hears('link2')
+  async link2(@Ctx() ctx: TelegrafContext) {
+    await ctx.reply(
+      'Please read the article where you can learn about 3 possible concepts of building a plan for the first cycle:',
+      {
+        parse_mode: 'Markdown',
+        reply_markup: { inline_keyboard: this.urlButton },
+      },
+    );
+    await ctx.reply('Choose concept:', {
+      reply_markup: { inline_keyboard: this.threeOptions },
     });
   }
 
