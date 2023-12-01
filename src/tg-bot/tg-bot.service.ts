@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { TelegrafContext } from './types';
 import { promises as fs } from 'fs';
 import axios from 'axios';
+import { InlineKeyboardService } from './inline-keyboard.service';
 
 @Injectable()
 export class TgBotService {
@@ -12,8 +13,70 @@ export class TgBotService {
   constructor(
     private readonly utilsService: UtilsService,
     private readonly configService: ConfigService,
+    private readonly inlineKeyboardService: InlineKeyboardService,
   ) {
     this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
+  }
+
+  async sendTestingMessage(ctx: TelegrafContext): Promise<void> {
+    await ctx.reply('Hello testing');
+  }
+
+  async testBool(ctx: TelegrafContext): Promise<void> {
+    await ctx.reply('This is my first cycle:', {
+      reply_markup: {
+        inline_keyboard: this.inlineKeyboardService.getBooleanSelector(),
+      },
+    });
+  }
+
+  async testGoal(ctx: TelegrafContext): Promise<void> {
+    await ctx.reply('Choose your goal:', {
+      reply_markup: {
+        inline_keyboard: this.inlineKeyboardService.getGoalSelector(),
+      },
+    });
+  }
+
+  async testArticle(ctx: TelegrafContext): Promise<void> {
+    await ctx.reply(
+      'Please read the article where you can learn about 3 possible concepts of building a plan for the first cycle:',
+      {
+        parse_mode: 'Markdown',
+        reply_markup: {
+          inline_keyboard: this.inlineKeyboardService.getArticleLink(),
+        },
+      },
+    );
+    await ctx.reply('Choose concept:', {
+      reply_markup: {
+        inline_keyboard: this.inlineKeyboardService.getArticleReplyButtons(),
+      },
+    });
+  }
+
+  async processCallback(ctx: TelegrafContext): Promise<void> {
+    try {
+      if (!('data' in ctx.callbackQuery))
+        throw new Error('No data in the callback');
+      const { data } = ctx.callbackQuery;
+
+      switch (data) {
+        case 'true': {
+          await ctx.reply('true');
+          break;
+        }
+        case 'false': {
+          await ctx.reply('false');
+          break;
+        }
+        default: {
+          throw new Error('Unknown callback data');
+        }
+      }
+    } catch (error) {
+      this.logger.log(`test: ${ctx.update.update_id} ${error}`);
+    }
   }
 
   async sendMessageToAdmin(
