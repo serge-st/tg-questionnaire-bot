@@ -55,6 +55,21 @@ export class TgBotService {
     });
   }
 
+  async testEmail(ctx: TelegrafContext): Promise<void> {
+    const regEx =
+      /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+
+    const currentUpdate = ctx.update;
+    if (!('message' in currentUpdate)) throw new Error('No message');
+    if (!('text' in currentUpdate.message)) throw new Error('No message text');
+    const { text } = currentUpdate.message;
+    if (regEx.test(text)) {
+      await ctx.reply('Email is valid');
+    } else {
+      await ctx.reply('Email is not valid');
+    }
+  }
+
   async processCallback(ctx: TelegrafContext): Promise<void> {
     try {
       if (!('data' in ctx.callbackQuery))

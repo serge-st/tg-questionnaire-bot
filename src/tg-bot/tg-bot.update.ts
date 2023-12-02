@@ -41,6 +41,11 @@ export class TgBotUppdate {
     this.tgBotService.testArticle(ctx);
   }
 
+  @On('text')
+  async email(@Ctx() ctx: TelegrafContext) {
+    this.tgBotService.testEmail(ctx);
+  }
+
   @On('callback_query')
   async test(@Ctx() ctx: TelegrafContext) {
     this.tgBotService.processCallback(ctx);
@@ -54,24 +59,24 @@ export class TgBotUppdate {
   // * Number parser
   //parseFloat(' 1 , 11 '.replaceAll(' ', '').replace(',', '.'))
 
-  @On('text')
-  async onEmoji(@Ctx() ctx: TelegrafContext): Promise<void> {
-    const currentUpdate = ctx.update;
-    if (!('message' in currentUpdate)) throw new Error('No message');
-    if (!('from' in currentUpdate.message)) throw new Error('No sender');
-    if (!('text' in currentUpdate.message)) throw new Error('No message text');
-    const { from, text } = currentUpdate.message;
-    this.logger.log('current message', currentUpdate.message);
+  // @On('text')
+  // async onEmoji(@Ctx() ctx: TelegrafContext): Promise<void> {
+  //   const currentUpdate = ctx.update;
+  //   if (!('message' in currentUpdate)) throw new Error('No message');
+  //   if (!('from' in currentUpdate.message)) throw new Error('No sender');
+  //   if (!('text' in currentUpdate.message)) throw new Error('No message text');
+  //   const { from, text } = currentUpdate.message;
+  //   this.logger.log('current message', currentUpdate.message);
 
-    const previousReply = await this.cacheManager.get(from.id.toString());
+  //   const previousReply = await this.cacheManager.get(from.id.toString());
 
-    if (previousReply) {
-      this.logger.log('previous reply', previousReply);
-    }
-    await this.cacheManager.set(from.id.toString(), text);
-    // await ctx.telegram.sendMessage(261516520, 'yoba');
-    await ctx.reply('Текс получен');
-  }
+  //   if (previousReply) {
+  //     this.logger.log('previous reply', previousReply);
+  //   }
+  //   await this.cacheManager.set(from.id.toString(), text);
+  //   // await ctx.telegram.sendMessage(261516520, 'yoba');
+  //   await ctx.reply('Текс получен');
+  // }
 
   @On('photo')
   async onPhoto(@Ctx() ctx: TelegrafContext): Promise<void> {
