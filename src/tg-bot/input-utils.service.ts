@@ -1,6 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { validate as cvValidate } from 'class-validator';
-import { StringInputDTO, NumberInputDTO, EmailInputDTO } from './dto';
+import {
+  StringInputDTO,
+  NumberInputDTO,
+  EmailInputDTO,
+  BooleanInputDTO,
+} from './dto';
 
 @Injectable()
 export class InputUtilsService {
@@ -25,6 +30,13 @@ export class InputUtilsService {
       const errors = await cvValidate(dto);
       return errors.length === 0;
     },
+
+    boolean: async (input: string): Promise<boolean> => {
+      const dto = new BooleanInputDTO();
+      dto.input = input;
+      const errors = await cvValidate(dto);
+      return errors.length === 0;
+    },
   };
 
   private preParseNumber = (input: string): string => {
@@ -35,5 +47,9 @@ export class InputUtilsService {
     const formattedInput = input.replaceAll(' ', '').replace(',', '.');
     const parsed = parseFloat(formattedInput);
     return isNaN(parsed) ? null : parsed;
+  };
+
+  parseBoolean = (input: string): boolean | null => {
+    return input === 'true' ? true : input === 'false' ? false : null;
   };
 }

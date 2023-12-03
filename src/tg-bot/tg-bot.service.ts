@@ -69,11 +69,15 @@ export class TgBotService {
     const isValidEmail = await this.inputUtilsService.validate['email'](text);
     const isValidNumber = await this.inputUtilsService.validate['number'](text);
     const isValidString = await this.inputUtilsService.validate['string'](text);
+    const isValidBoolean =
+      await this.inputUtilsService.validate['boolean'](text);
 
     console.log('isValidEmail', isValidEmail);
     console.log('isValidNumber', isValidNumber);
     console.log('isValidString', isValidString);
     console.log('parsed number', this.inputUtilsService.parseNumber(text));
+    console.log('isValidBoolean', isValidBoolean);
+    console.log('parsed boolean', this.inputUtilsService.parseBoolean(text));
     console.log('-----');
 
     if (regEx.test(text)) {
