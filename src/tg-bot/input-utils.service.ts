@@ -7,6 +7,8 @@ import {
   BooleanInputDTO,
 } from './dto';
 
+export type InputDataType = keyof InputUtilsService['validate'];
+
 @Injectable()
 export class InputUtilsService {
   validate = {
