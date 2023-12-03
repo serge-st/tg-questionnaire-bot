@@ -1,9 +1,8 @@
 import { Module } from '@nestjs/common';
+import { TelegrafModule } from 'nestjs-telegraf';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { CacheModule } from '@nestjs/cache-manager';
-import { UtilsModule } from 'utils/utils.module';
 import { TgBotUppdate } from './tg-bot.update';
-import { TelegrafModule } from 'nestjs-telegraf';
 import { TgBotService } from './tg-bot.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
 import { InputUtilsService } from './input-utils.service';
@@ -18,7 +17,6 @@ import { InputUtilsService } from './input-utils.service';
         return { token };
       },
     }),
-    UtilsModule,
     ConfigModule,
     CacheModule.register({
       ttl: 60 * 60 * 1000, // = 1h, time in milliseconds
