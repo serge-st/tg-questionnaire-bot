@@ -6,6 +6,7 @@ import { TgBotUppdate } from './tg-bot.update';
 import { TelegrafModule } from 'nestjs-telegraf';
 import { TgBotService } from './tg-bot.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
+import { InputUtilsService } from './input-utils.service';
 
 @Module({
   imports: [
@@ -23,6 +24,11 @@ import { InlineKeyboardService } from './inline-keyboard.service';
       ttl: 60 * 60 * 1000, // = 1h, time in milliseconds
     }),
   ],
-  providers: [TgBotUppdate, TgBotService, InlineKeyboardService],
+  providers: [
+    TgBotUppdate,
+    TgBotService,
+    InlineKeyboardService,
+    InputUtilsService,
+  ],
 })
 export class TgBotModule {}

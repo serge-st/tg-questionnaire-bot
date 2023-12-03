@@ -5,6 +5,7 @@ import { TelegrafContext } from './types';
 import { promises as fs } from 'fs';
 import axios from 'axios';
 import { InlineKeyboardService } from './inline-keyboard.service';
+import { InputUtilsService } from './input-utils.service';
 
 @Injectable()
 export class TgBotService {
@@ -14,6 +15,7 @@ export class TgBotService {
     private readonly utilsService: UtilsService,
     private readonly configService: ConfigService,
     private readonly inlineKeyboardService: InlineKeyboardService,
+    private readonly inputUtilsService: InputUtilsService,
   ) {
     this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
   }
@@ -63,6 +65,17 @@ export class TgBotService {
     if (!('message' in currentUpdate)) throw new Error('No message');
     if (!('text' in currentUpdate.message)) throw new Error('No message text');
     const { text } = currentUpdate.message;
+
+    const isValidEmail = await this.inputUtilsService.validate['email'](text);
+    const isValidNumber = await this.inputUtilsService.validate['number'](text);
+    const isValidString = await this.inputUtilsService.validate['string'](text);
+
+    console.log('isValidEmail', isValidEmail);
+    console.log('isValidNumber', isValidNumber);
+    console.log('isValidString', isValidString);
+    console.log('parsed number', this.inputUtilsService.parseNumber(text));
+    console.log('-----');
+
     if (regEx.test(text)) {
       await ctx.reply('Email is valid');
     } else {
