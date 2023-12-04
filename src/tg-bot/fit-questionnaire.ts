@@ -3,6 +3,7 @@ import { InputDataType } from './input-utils.service';
 type Question = {
   id: number;
   text: string;
+  placeholder?: string;
   type: InputDataType;
 };
 
@@ -16,13 +17,34 @@ type Answer = {
 export class FitQuestionnaire {
   readonly questions: Question[] = [
     // * STEP 1 - GENERAL DATA
-    { id: 1, text: 'Please enter your email', type: 'email' },
-    { id: 2, text: 'Please enter your height in cm', type: 'number' },
-    { id: 3, text: 'Please enter your weight in kg', type: 'number' },
-    { id: 4, text: 'Please enter your age', type: 'number' },
+    {
+      id: 1,
+      text: 'Please enter your email',
+      placeholder: 'E.g.: me@domain.com',
+      type: 'email',
+    },
+    {
+      id: 2,
+      text: 'Please enter your height in cm',
+      placeholder: 'E.g.: 175',
+      type: 'number',
+    },
+    {
+      id: 3,
+      text: 'Please enter your weight in kg',
+      placeholder: 'E.g.: 83',
+      type: 'number',
+    },
+    {
+      id: 4,
+      text: 'Please enter your age',
+      placeholder: 'E.g.: 25',
+      type: 'number',
+    },
     {
       id: 5,
       text: 'What is your workout experience in years',
+      placeholder: 'E.g.: 3',
       type: 'number',
     },
     { id: 6, text: 'Do you have any health chronic diseases', type: 'boolean' },
@@ -38,8 +60,10 @@ export class FitQuestionnaire {
     this.responses.push({ questionId, data: response });
   }
 
-  getQuestion(): Question {
-    return this.questions[this.currentQuestionIndex];
+  getQuestionData(): [string, string | undefined] {
+    const question = this.questions[this.currentQuestionIndex];
+    const { text, placeholder } = question;
+    return [text, placeholder];
   }
 
   isComplete() {

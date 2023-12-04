@@ -6,6 +6,7 @@ import {
   EmailInputDTO,
   BooleanInputDTO,
 } from './dto';
+import { OptionsInputDTO } from './dto/options-input.dto';
 
 export type InputDataType = keyof InputUtilsService['validate'];
 
@@ -13,29 +14,32 @@ export type InputDataType = keyof InputUtilsService['validate'];
 export class InputUtilsService {
   validate = {
     string: async (input: string): Promise<boolean> => {
-      const dto = new StringInputDTO();
-      dto.input = input;
+      const dto = new StringInputDTO(input);
       const errors = await cvValidate(dto);
       return errors.length === 0;
     },
 
     email: async (input: string): Promise<boolean> => {
-      const dto = new EmailInputDTO();
-      dto.input = input;
+      const dto = new EmailInputDTO(input);
       const errors = await cvValidate(dto);
       return errors.length === 0;
     },
 
     number: async (input: string): Promise<boolean> => {
-      const dto = new NumberInputDTO();
-      dto.input = this.preParseNumber(input);
+      const preParsedInput = this.preParseNumber(input);
+      const dto = new NumberInputDTO(preParsedInput);
       const errors = await cvValidate(dto);
       return errors.length === 0;
     },
 
     boolean: async (input: string): Promise<boolean> => {
-      const dto = new BooleanInputDTO();
-      dto.input = input;
+      const dto = new BooleanInputDTO(input);
+      const errors = await cvValidate(dto);
+      return errors.length === 0;
+    },
+
+    options: async (input: string, options: string[]): Promise<boolean> => {
+      const dto = new OptionsInputDTO(input, options);
       const errors = await cvValidate(dto);
       return errors.length === 0;
     },
