@@ -22,45 +22,122 @@ export class TgBotService {
   }
 
   async start(ctx: TelegrafContext): Promise<void> {
+    try {
+      const questionnaireData = await this.cacheGet(ctx);
+      const { currentQuestionIndex } = questionnaireData;
+      if (currentQuestionIndex === 0) {
+        await ctx.reply(`Great, let's start!`);
+      } else {
+        await ctx.reply(`Ok, let's continue!`);
+      }
+      await this.showQuestion(ctx, questionnaireData);
+    } catch (error) {
+      this.logger.error('start', error);
+    }
+  }
+
+  getUserId(ctx: TelegrafContext): [string, number] {
     const currentUpdate = ctx.update;
     if (!('message' in currentUpdate)) throw new Error('No message');
     const userId = currentUpdate.message.from.id;
     const userKey = userId.toString();
-    const previousData = await this.cacheManager.get<string>(userKey);
-    if (previousData) {
-      const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
-      const { currentQuestionIndex } = questionnaireData;
-      await this.continueQuestionnaire(ctx, currentQuestionIndex);
-      return;
-    }
-    const newUserQuestionnaire = new FitQuestionnaire(userId);
-    const [questionText, placeholder] = newUserQuestionnaire.getQuestionData();
+    return [userKey, userId];
+  }
 
-    await ctx.reply(`Great, let's start!`);
-    await ctx.reply(questionText, {
+  async cacheGet(ctx: TelegrafContext): Promise<FitQuestionnaire> {
+    this.logger.log('===> cacheGet');
+    const [userKey, userId] = this.getUserId(ctx);
+    this.logger.log('cacheGet for', userKey);
+    const previousData = await this.cacheManager.get<string>(userKey);
+    this.logger.log('cacheGet data', previousData);
+    this.logger.log('==================');
+    if (!previousData) return new FitQuestionnaire(userId);
+    const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
+    return questionnaireData;
+  }
+
+  async cacheSet(ctx: TelegrafContext, questionnaireData: FitQuestionnaire) {
+    this.logger.log('===> cacheSet');
+    const [userKey] = this.getUserId(ctx);
+    this.logger.log('cacheSet for', userKey);
+    this.logger.log('cacheSet data', JSON.stringify(questionnaireData));
+    await this.cacheManager.set(userKey, JSON.stringify(questionnaireData));
+    this.logger.log('==================');
+  }
+
+  async showQuestion(
+    ctx: TelegrafContext,
+    questionnaireData: FitQuestionnaire,
+  ): Promise<void> {
+    const [type, text, placeholder] = questionnaireData.getQuestionData();
+
+    switch (type) {
+      case 'boolean':
+        await this.showBooleanQuestion(ctx, text);
+        break;
+      case 'options':
+        await this.showOptionsQuestion(ctx, text);
+        break;
+      default:
+        await this.showTextQuestion(ctx, text, placeholder);
+        break;
+    }
+  }
+
+  async showTextQuestion(
+    ctx: TelegrafContext,
+    text: string,
+    placeholder: string,
+  ): Promise<void> {
+    await ctx.reply(text, {
       reply_markup: {
         force_reply: true,
         input_field_placeholder: placeholder ?? '',
       },
     });
-    await this.cacheManager.set(userKey, JSON.stringify(newUserQuestionnaire));
   }
 
-  async continueQuestionnaire(
-    ctx: TelegrafContext,
-    questionIndex: number,
-  ): Promise<void> {
-    await ctx.reply(`Ok, let's continue!`);
-    await this.showQuestion(ctx, questionIndex);
+  async showBooleanQuestion(ctx: TelegrafContext, text: string): Promise<void> {
+    this.logger.log('showBooleanQuestion', ctx, text);
   }
 
-  async showQuestion(
-    ctx: TelegrafContext,
-    questionIndex: number,
-  ): Promise<void> {
-    // encapsulate show question logic
-    console.log('showQuestion ctx', ctx);
-    console.log('showQuestion questionIndex', questionIndex);
+  async showOptionsQuestion(ctx: TelegrafContext, text: string): Promise<void> {
+    this.logger.log('showOptionsQuestion', ctx, text);
+  }
+
+  async checkAnswer(ctx: TelegrafContext): Promise<void> {
+    try {
+      const currentUpdate = ctx.update;
+      if (!('message' in currentUpdate)) throw new Error('No message');
+      if (!('text' in currentUpdate.message)) throw new Error('No text');
+
+      const questionnaireData = await this.cacheGet(ctx);
+      console.log('questionnaireData', questionnaireData);
+      const { text } = currentUpdate.message;
+      // TODO: extract getQuestionData into utils
+      const [type] = questionnaireData.getQuestionData();
+
+      if (type === 'options' || type === 'boolean')
+        return this.checkOptionsAnswer(ctx);
+      const isValid = await this.inputUtilsService.validate[type](text);
+      if (!isValid) return this.invalidAnswer(ctx);
+
+      // TODO: probably parse data
+      questionnaireData.addResponse(text);
+      await this.cacheSet(ctx, questionnaireData);
+      this.showQuestion(ctx, questionnaireData);
+    } catch (error) {
+      this.logger.error('checkAnswer', error);
+    }
+  }
+
+  async checkOptionsAnswer(ctx: TelegrafContext): Promise<void> {
+    this.logger.log('checkOptionsAnswer', ctx);
+  }
+
+  async invalidAnswer(ctx: TelegrafContext): Promise<void> {
+    // TODO: add user friendly error messages
+    await ctx.reply('Invalid answer, please try again');
   }
 
   async test(ctx: TelegrafContext): Promise<void> {
@@ -71,12 +148,21 @@ export class TgBotService {
     );
 
     console.log('input', ctx.update.message.text, 'res', res);
+
+    await ctx.reply(`You wrote: ${ctx.update.message.text}`, {
+      reply_markup: {
+        force_reply: true,
+        input_field_placeholder: 'Enter your age',
+      },
+    });
   }
 
   async sendCallback(ctx: TelegrafContext): Promise<void> {
     await ctx.reply('Choose your goal:', {
       reply_markup: {
         inline_keyboard: this.inlineKeyboardService.getGoalSelector(),
+        force_reply: true,
+        input_field_placeholder: '',
       },
     });
   }
@@ -93,5 +179,34 @@ export class TgBotService {
     const { data } = ctx.callbackQuery;
     const res = await this.inputUtilsService.validate['options'](data, options);
     console.log('input', data, 'res', res);
+  }
+
+  async start2(ctx: TelegrafContext): Promise<void> {
+    const currentUpdate = ctx.update;
+    if (!('message' in currentUpdate)) throw new Error('No message');
+    const userId = currentUpdate.message.from.id;
+    const userKey = userId.toString();
+    const previousData = await this.cacheManager.get<string>(userKey);
+    if (previousData) {
+      await ctx.reply(`Ok, let's continue!`);
+      // await this.showQuestion(ctx);
+      return;
+    }
+    const newUserQuestionnaire = new FitQuestionnaire(userId);
+
+    await ctx.reply(`Great, let's start!`);
+    // await this.showQuestion(ctx);
+    await this.cacheManager.set(userKey, JSON.stringify(newUserQuestionnaire));
+
+    // const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
+    // const { currentQuestionIndex } = questionnaireData;
+
+    // const [questionText, placeholder] = newUserQuestionnaire.getQuestionData();
+    // await ctx.reply(questionText, {
+    //   reply_markup: {
+    //     force_reply: true,
+    //     input_field_placeholder: placeholder ?? '',
+    //   },
+    // });
   }
 }

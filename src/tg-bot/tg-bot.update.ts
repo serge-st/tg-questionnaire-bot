@@ -1,5 +1,5 @@
 import { Logger } from '@nestjs/common';
-import { Update, Ctx, Start, On, Hears } from 'nestjs-telegraf';
+import { Update, Ctx, Start, On } from 'nestjs-telegraf';
 import { TelegrafContext } from 'tg-bot/types';
 import { TgBotService } from './tg-bot.service';
 
@@ -13,18 +13,13 @@ export class TgBotUppdate {
     await this.tgBotService.start(ctx);
   }
 
-  // @On('text')
-  // async test(@Ctx() ctx: TelegrafContext) {
-  //   this.tgBotService.test(ctx);
-  // }
-
-  @Hears('options')
-  async sendCallback(@Ctx() ctx: TelegrafContext) {
-    this.tgBotService.sendCallback(ctx);
+  @On('text')
+  async handleText(@Ctx() ctx: TelegrafContext) {
+    this.tgBotService.checkAnswer(ctx);
   }
 
   @On('callback_query')
-  async testCallback(@Ctx() ctx: TelegrafContext) {
-    this.tgBotService.testCallback(ctx);
+  async handleCallback(@Ctx() ctx: TelegrafContext) {
+    this.tgBotService.checkOptionsAnswer(ctx);
   }
 }
