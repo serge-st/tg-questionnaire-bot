@@ -141,6 +141,14 @@ export class TgBotService {
     }
   }
 
+  async restart(ctx: TelegrafContext): Promise<void> {
+    // TODO: probably refactor and re-use start
+    const questionnaireData = await this.cacheGet(ctx);
+    questionnaireData.currentQuestionIndex = 0;
+    await ctx.reply(`Ok, let's start from the beginning!`);
+    await this.showQuestion(ctx, questionnaireData);
+  }
+
   getQuestionData(questionnaire: FitQuestionnaire): [InputDataType, string, string | undefined] {
     const question = questionnaire.questions[questionnaire.currentQuestionIndex];
     const { text, placeholder, type } = question;
