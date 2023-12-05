@@ -11,6 +11,7 @@ import { InlineKeyboardService } from './inline-keyboard.service';
 @Injectable()
 export class TgBotService {
   private readonly logger = new Logger(TgBotService.name);
+  private readonly serviceErrorText: string = 'Something went wrong, please contact the admin';
   private readonly adminId: number;
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
@@ -33,6 +34,7 @@ export class TgBotService {
       await this.showQuestion(ctx, questionnaireData);
     } catch (error) {
       this.logger.error('start', error);
+      await ctx.reply(this.serviceErrorText);
     }
   }
 
@@ -66,18 +68,23 @@ export class TgBotService {
   }
 
   async showQuestion(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
-    const [type, text, placeholder] = this.getQuestionData(questionnaireData);
+    try {
+      const [type, text, placeholder] = this.getQuestionData(questionnaireData);
 
-    switch (type) {
-      case 'boolean':
-        await this.showBooleanQuestion(ctx, text);
-        break;
-      case 'options':
-        await this.showOptionsQuestion(ctx, text);
-        break;
-      default:
-        await this.showTextQuestion(ctx, text, placeholder);
-        break;
+      switch (type) {
+        case 'boolean':
+          await this.showBooleanQuestion(ctx, text);
+          break;
+        case 'options':
+          await this.showOptionsQuestion(ctx, text);
+          break;
+        default:
+          await this.showTextQuestion(ctx, text, placeholder);
+          break;
+      }
+    } catch (error) {
+      this.logger.error('showQuestion', error);
+      await ctx.reply(this.serviceErrorText);
     }
   }
 
@@ -120,6 +127,7 @@ export class TgBotService {
       this.showQuestion(ctx, questionnaireData);
     } catch (error) {
       this.logger.error('checkAnswer', error);
+      await ctx.reply(this.serviceErrorText);
     }
   }
 
