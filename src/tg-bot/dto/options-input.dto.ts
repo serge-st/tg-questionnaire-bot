@@ -3,7 +3,7 @@ import { IsOneOfOptions } from 'tg-bot/decorators';
 
 export class OptionsInputDTO {
   @IsString({ message: 'The input must be a string' })
-  @IsOneOfOptions('options', { message: 'Input must be one of the options' })
+  @IsOneOfOptions('options', { message: 'The input must be one of the options' })
   input: string;
 
   @IsString({ each: true, message: 'Each option must be a string' })

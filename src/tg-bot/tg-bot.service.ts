@@ -5,7 +5,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { TelegrafContext } from './types';
 import { AnswerData, FitQuestionnaire } from './fit-questionnaire';
-import { InputDataType, InputUtilsService } from './input-utils.service';
+import { InputDataType, InputUtilsService, ValidationResult } from './input-utils.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
 
 @Injectable()
@@ -111,8 +111,8 @@ export class TgBotService {
       const [type] = this.getQuestionData(questionnaireData);
 
       if (type === 'options' || type === 'boolean') return this.checkOptionsAnswer(ctx);
-      const isValid = await this.inputUtilsService.validate[type](text);
-      if (!isValid) return this.invalidAnswer(ctx);
+      const { isValid, errors } = await this.inputUtilsService.validate[type](text);
+      if (!isValid) return this.invalidAnswer(ctx, errors);
 
       // TODO: probably parse data
       this.addResponse(text, questionnaireData);
@@ -127,9 +127,10 @@ export class TgBotService {
     this.logger.log('checkOptionsAnswer', ctx);
   }
 
-  async invalidAnswer(ctx: TelegrafContext): Promise<void> {
-    // TODO: add user friendly error messages
-    await ctx.reply('Invalid answer, please try again');
+  async invalidAnswer(ctx: TelegrafContext, errors: ValidationResult['errors']): Promise<void> {
+    for (const error of errors) {
+      await ctx.reply(error);
+    }
   }
 
   getQuestionData(questionnaire: FitQuestionnaire): [InputDataType, string, string | undefined] {
