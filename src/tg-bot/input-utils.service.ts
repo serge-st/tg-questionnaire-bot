@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { validate as cvValidate } from 'class-validator';
-import {
-  StringInputDTO,
-  NumberInputDTO,
-  EmailInputDTO,
-  BooleanInputDTO,
-} from './dto';
+import { StringInputDTO, NumberInputDTO, EmailInputDTO, BooleanInputDTO } from './dto';
 import { OptionsInputDTO } from './dto/options-input.dto';
 
 export type InputDataType = keyof InputUtilsService['validate'];

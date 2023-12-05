@@ -65,10 +65,7 @@ export class TgBotService {
     this.logger.log('==================');
   }
 
-  async showQuestion(
-    ctx: TelegrafContext,
-    questionnaireData: FitQuestionnaire,
-  ): Promise<void> {
+  async showQuestion(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
     const [type, text, placeholder] = this.getQuestionData(questionnaireData);
 
     switch (type) {
@@ -84,11 +81,7 @@ export class TgBotService {
     }
   }
 
-  async showTextQuestion(
-    ctx: TelegrafContext,
-    text: string,
-    placeholder: string,
-  ): Promise<void> {
+  async showTextQuestion(ctx: TelegrafContext, text: string, placeholder: string): Promise<void> {
     await ctx.reply(text, {
       reply_markup: {
         force_reply: true,
@@ -117,8 +110,7 @@ export class TgBotService {
       // TODO: extract getQuestionData into utils
       const [type] = this.getQuestionData(questionnaireData);
 
-      if (type === 'options' || type === 'boolean')
-        return this.checkOptionsAnswer(ctx);
+      if (type === 'options' || type === 'boolean') return this.checkOptionsAnswer(ctx);
       const isValid = await this.inputUtilsService.validate[type](text);
       if (!isValid) return this.invalidAnswer(ctx);
 
@@ -140,19 +132,15 @@ export class TgBotService {
     await ctx.reply('Invalid answer, please try again');
   }
 
-  getQuestionData(
-    questionnaire: FitQuestionnaire,
-  ): [InputDataType, string, string | undefined] {
-    const question =
-      questionnaire.questions[questionnaire.currentQuestionIndex];
+  getQuestionData(questionnaire: FitQuestionnaire): [InputDataType, string, string | undefined] {
+    const question = questionnaire.questions[questionnaire.currentQuestionIndex];
     const { text, placeholder, type } = question;
     return [type, text, placeholder];
   }
 
   addResponse(response: AnswerData, questionnaire: FitQuestionnaire): void {
     // TODO: probably parse data
-    questionnaire.questions[questionnaire.currentQuestionIndex].response =
-      response;
+    questionnaire.questions[questionnaire.currentQuestionIndex].response = response;
     questionnaire.currentQuestionIndex += 1;
   }
 }

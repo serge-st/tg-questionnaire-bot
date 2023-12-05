@@ -22,11 +22,6 @@ import { InputUtilsService } from './input-utils.service';
       ttl: 60 * 60 * 1000, // = 1h, time in milliseconds
     }),
   ],
-  providers: [
-    TgBotUppdate,
-    TgBotService,
-    InlineKeyboardService,
-    InputUtilsService,
-  ],
+  providers: [TgBotUppdate, TgBotService, InlineKeyboardService, InputUtilsService],
 })
 export class TgBotModule {}

@@ -28,9 +28,7 @@ export class TgBotServiceTesting {
     if (!('message' in currentUpdate)) throw new Error('No message');
     if (!('text' in currentUpdate.message)) throw new Error('No message text');
     const { text } = currentUpdate.message;
-    const prevResult = await this.cacheManager.get(
-      ctx.message.from.id.toString(),
-    );
+    const prevResult = await this.cacheManager.get(ctx.message.from.id.toString());
     ctx.reply(`prevResult: ${prevResult}`);
     await this.cacheManager.set(ctx.message.from.id.toString(), text);
   }
@@ -73,8 +71,7 @@ export class TgBotServiceTesting {
   }
 
   async testEmail(ctx: TelegrafContext): Promise<void> {
-    const regEx =
-      /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
+    const regEx = /^[a-zA-Z0-9.!#$%&’*+/=?^_`{|}~-]+@[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*$/;
 
     const currentUpdate = ctx.update;
     if (!('message' in currentUpdate)) throw new Error('No message');
@@ -84,8 +81,7 @@ export class TgBotServiceTesting {
     const isValidEmail = await this.inputUtilsService.validate['email'](text);
     const isValidNumber = await this.inputUtilsService.validate['number'](text);
     const isValidString = await this.inputUtilsService.validate['string'](text);
-    const isValidBoolean =
-      await this.inputUtilsService.validate['boolean'](text);
+    const isValidBoolean = await this.inputUtilsService.validate['boolean'](text);
 
     console.log('isValidEmail', isValidEmail);
     console.log('isValidNumber', isValidNumber);
@@ -104,8 +100,7 @@ export class TgBotServiceTesting {
 
   async processCallback(ctx: TelegrafContext): Promise<void> {
     try {
-      if (!('data' in ctx.callbackQuery))
-        throw new Error('No data in the callback');
+      if (!('data' in ctx.callbackQuery)) throw new Error('No data in the callback');
       const { data } = ctx.callbackQuery;
 
       switch (data) {
@@ -126,10 +121,7 @@ export class TgBotServiceTesting {
     }
   }
 
-  async sendMessageToAdmin(
-    ctx: TelegrafContext,
-    message: string,
-  ): Promise<void> {
+  async sendMessageToAdmin(ctx: TelegrafContext, message: string): Promise<void> {
     await ctx.telegram.sendMessage(this.adminId, message);
   }
 

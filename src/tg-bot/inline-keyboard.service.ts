@@ -4,10 +4,7 @@ import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
 @Injectable()
 export class InlineKeyboardService {
   getBooleanSelector(): InlineKeyboardButton[][] {
-    return [
-      [{ text: 'Yes', callback_data: 'true' }],
-      [{ text: 'No', callback_data: 'false' }],
-    ];
+    return [[{ text: 'Yes', callback_data: 'true' }], [{ text: 'No', callback_data: 'false' }]];
   }
 
   getGoalSelector(): InlineKeyboardButton[][] {
