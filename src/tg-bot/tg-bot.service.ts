@@ -4,9 +4,9 @@ import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { TelegrafContext } from './types';
+import { AnswerData, FitQuestionnaire } from './fit-questionnaire';
+import { InputDataType, InputUtilsService } from './input-utils.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
-import { InputUtilsService } from './input-utils.service';
-import { FitQuestionnaire } from './fit-questionnaire';
 
 @Injectable()
 export class TgBotService {
@@ -15,8 +15,8 @@ export class TgBotService {
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly configService: ConfigService,
-    private readonly inlineKeyboardService: InlineKeyboardService,
     private readonly inputUtilsService: InputUtilsService,
+    private readonly inlineKeyboardService: InlineKeyboardService,
   ) {
     this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
   }
@@ -69,7 +69,7 @@ export class TgBotService {
     ctx: TelegrafContext,
     questionnaireData: FitQuestionnaire,
   ): Promise<void> {
-    const [type, text, placeholder] = questionnaireData.getQuestionData();
+    const [type, text, placeholder] = this.getQuestionData(questionnaireData);
 
     switch (type) {
       case 'boolean':
@@ -115,7 +115,7 @@ export class TgBotService {
       console.log('questionnaireData', questionnaireData);
       const { text } = currentUpdate.message;
       // TODO: extract getQuestionData into utils
-      const [type] = questionnaireData.getQuestionData();
+      const [type] = this.getQuestionData(questionnaireData);
 
       if (type === 'options' || type === 'boolean')
         return this.checkOptionsAnswer(ctx);
@@ -123,7 +123,7 @@ export class TgBotService {
       if (!isValid) return this.invalidAnswer(ctx);
 
       // TODO: probably parse data
-      questionnaireData.addResponse(text);
+      this.addResponse(text, questionnaireData);
       await this.cacheSet(ctx, questionnaireData);
       this.showQuestion(ctx, questionnaireData);
     } catch (error) {
@@ -140,73 +140,89 @@ export class TgBotService {
     await ctx.reply('Invalid answer, please try again');
   }
 
-  async test(ctx: TelegrafContext): Promise<void> {
-    if (!('message' in ctx.update)) throw new Error('No message');
-    if (!('text' in ctx.update.message)) throw new Error('No text');
-    const res = await this.inputUtilsService.validate['number'](
-      ctx.update.message.text,
-    );
-
-    console.log('input', ctx.update.message.text, 'res', res);
-
-    await ctx.reply(`You wrote: ${ctx.update.message.text}`, {
-      reply_markup: {
-        force_reply: true,
-        input_field_placeholder: 'Enter your age',
-      },
-    });
+  getQuestionData(
+    questionnaire: FitQuestionnaire,
+  ): [InputDataType, string, string | undefined] {
+    const question =
+      questionnaire.questions[questionnaire.currentQuestionIndex];
+    const { text, placeholder, type } = question;
+    return [type, text, placeholder];
   }
 
-  async sendCallback(ctx: TelegrafContext): Promise<void> {
-    await ctx.reply('Choose your goal:', {
-      reply_markup: {
-        inline_keyboard: this.inlineKeyboardService.getGoalSelector(),
-        force_reply: true,
-        input_field_placeholder: '',
-      },
-    });
-  }
-
-  async testCallback(ctx: TelegrafContext): Promise<void> {
-    if (!('data' in ctx.callbackQuery))
-      throw new Error('No data in the callback');
-    // const fakeOptions = ['asdf', 'qwer', 'zxcv'];
-    const options = this.inlineKeyboardService.getGoalSelector().map((row) => {
-      const [option] = row;
-      return option['callback_data'];
-    });
-    console.log('options', options);
-    const { data } = ctx.callbackQuery;
-    const res = await this.inputUtilsService.validate['options'](data, options);
-    console.log('input', data, 'res', res);
-  }
-
-  async start2(ctx: TelegrafContext): Promise<void> {
-    const currentUpdate = ctx.update;
-    if (!('message' in currentUpdate)) throw new Error('No message');
-    const userId = currentUpdate.message.from.id;
-    const userKey = userId.toString();
-    const previousData = await this.cacheManager.get<string>(userKey);
-    if (previousData) {
-      await ctx.reply(`Ok, let's continue!`);
-      // await this.showQuestion(ctx);
-      return;
-    }
-    const newUserQuestionnaire = new FitQuestionnaire(userId);
-
-    await ctx.reply(`Great, let's start!`);
-    // await this.showQuestion(ctx);
-    await this.cacheManager.set(userKey, JSON.stringify(newUserQuestionnaire));
-
-    // const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
-    // const { currentQuestionIndex } = questionnaireData;
-
-    // const [questionText, placeholder] = newUserQuestionnaire.getQuestionData();
-    // await ctx.reply(questionText, {
-    //   reply_markup: {
-    //     force_reply: true,
-    //     input_field_placeholder: placeholder ?? '',
-    //   },
-    // });
+  addResponse(response: AnswerData, questionnaire: FitQuestionnaire): void {
+    // TODO: probably parse data
+    questionnaire.questions[questionnaire.currentQuestionIndex].response =
+      response;
+    questionnaire.currentQuestionIndex += 1;
   }
 }
+
+// async test(ctx: TelegrafContext): Promise<void> {
+//   if (!('message' in ctx.update)) throw new Error('No message');
+//   if (!('text' in ctx.update.message)) throw new Error('No text');
+//   const res = await this.inputUtilsService.validate['number'](
+//     ctx.update.message.text,
+//   );
+
+//   console.log('input', ctx.update.message.text, 'res', res);
+
+//   await ctx.reply(`You wrote: ${ctx.update.message.text}`, {
+//     reply_markup: {
+//       force_reply: true,
+//       input_field_placeholder: 'Enter your age',
+//     },
+//   });
+// }
+
+// async sendCallback(ctx: TelegrafContext): Promise<void> {
+//   await ctx.reply('Choose your goal:', {
+//     reply_markup: {
+//       inline_keyboard: this.inlineKeyboardService.getGoalSelector(),
+//       force_reply: true,
+//       input_field_placeholder: '',
+//     },
+//   });
+// }
+
+// async testCallback(ctx: TelegrafContext): Promise<void> {
+//   if (!('data' in ctx.callbackQuery))
+//     throw new Error('No data in the callback');
+//   // const fakeOptions = ['asdf', 'qwer', 'zxcv'];
+//   const options = this.inlineKeyboardService.getGoalSelector().map((row) => {
+//     const [option] = row;
+//     return option['callback_data'];
+//   });
+//   console.log('options', options);
+//   const { data } = ctx.callbackQuery;
+//   const res = await this.inputUtilsService.validate['options'](data, options);
+//   console.log('input', data, 'res', res);
+// }
+
+// async start2(ctx: TelegrafContext): Promise<void> {
+//   const currentUpdate = ctx.update;
+//   if (!('message' in currentUpdate)) throw new Error('No message');
+//   const userId = currentUpdate.message.from.id;
+//   const userKey = userId.toString();
+//   const previousData = await this.cacheManager.get<string>(userKey);
+//   if (previousData) {
+//     await ctx.reply(`Ok, let's continue!`);
+//     // await this.showQuestion(ctx);
+//     return;
+//   }
+//   const newUserQuestionnaire = new FitQuestionnaire(userId);
+
+//   await ctx.reply(`Great, let's start!`);
+//   // await this.showQuestion(ctx);
+//   await this.cacheManager.set(userKey, JSON.stringify(newUserQuestionnaire));
+
+//   // const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
+//   // const { currentQuestionIndex } = questionnaireData;
+
+//   // const [questionText, placeholder] = newUserQuestionnaire.getQuestionData();
+//   // await ctx.reply(questionText, {
+//   //   reply_markup: {
+//   //     force_reply: true,
+//   //     input_field_placeholder: placeholder ?? '',
+//   //   },
+//   // });
+// }

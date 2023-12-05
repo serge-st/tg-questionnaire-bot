@@ -1,13 +1,13 @@
 import { InputDataType } from './input-utils.service';
 
-type Question = {
+export type Question = {
   text: string;
   placeholder?: string;
   type: InputDataType;
   response?: AnswerData;
 };
 
-type AnswerData = number | string | boolean | 'skipped';
+export type AnswerData = number | string | boolean | 'skipped';
 
 // type Answer = {
 //   questionId: Question['id'];
@@ -50,18 +50,19 @@ export class FitQuestionnaire {
   currentQuestionIndex = 0;
   submittionTime: Date;
 
-  addResponse(response: AnswerData): void {
-    // TODO: probably parse data
-    this.questions[this.currentQuestionIndex].response = response;
-    this.currentQuestionIndex += 1;
-  }
+  // addResponse(response: AnswerData): void {
+  //   // TODO: probably parse data
+  //   this.questions[this.currentQuestionIndex].response = response;
+  //   this.currentQuestionIndex += 1;
+  // }
 
-  getQuestionData(): [InputDataType, string, string | undefined] {
-    const question = this.questions[this.currentQuestionIndex];
-    const { text, placeholder, type } = question;
-    return [type, text, placeholder];
-  }
+  // getQuestionData(): [InputDataType, string, string | undefined] {
+  //   const question = this.questions[this.currentQuestionIndex];
+  //   const { text, placeholder, type } = question;
+  //   return [type, text, placeholder];
+  // }
 
+  // TODO: Move the rest of the methods out of this class
   isComplete() {
     return this.currentQuestionIndex === this.questions.length;
   }
