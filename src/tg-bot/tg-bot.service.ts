@@ -3,6 +3,8 @@ import { ConfigService } from '@nestjs/config';
 // import axios from 'axios';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
+import { InjectBot } from 'nestjs-telegraf';
+import { Context, Telegraf } from 'telegraf';
 import { TelegrafContext } from './types';
 import { AnswerData, FitQuestionnaire } from './fit-questionnaire';
 import { InputDataType, InputUtilsService, ValidationResult } from './input-utils.service';
@@ -11,15 +13,23 @@ import { InlineKeyboardService } from './inline-keyboard.service';
 @Injectable()
 export class TgBotService {
   private readonly logger = new Logger(TgBotService.name);
-  private readonly serviceErrorText: string = 'Something went wrong, please contact the admin';
+  private readonly serviceErrorText: string =
+    'Something went wrong.\n\nPlease use /restart command to start from the beginning.\n\nIf the problem persists, please contact @DriadaRoids';
   private readonly adminId: number;
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    @InjectBot('tg-bot') private tgBot: Telegraf<Context>,
     private readonly configService: ConfigService,
     private readonly inputUtilsService: InputUtilsService,
     private readonly inlineKeyboardService: InlineKeyboardService,
   ) {
     this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
+  }
+
+  async help(ctx: TelegrafContext): Promise<void> {
+    await ctx.reply(
+      'We will create an effective cycle based on your goals.\n\nPlease use /start command to begin.\n\nPlease use /restart command to start from the beginning.\n\nIf you have any questions, please contact @DriadaRoids',
+    );
   }
 
   async start(ctx: TelegrafContext): Promise<void> {
@@ -47,24 +57,16 @@ export class TgBotService {
   }
 
   async cacheGet(ctx: TelegrafContext): Promise<FitQuestionnaire> {
-    this.logger.log('===> cacheGet');
     const [userKey, userId] = this.getUserId(ctx);
-    this.logger.log('cacheGet for', userKey);
     const previousData = await this.cacheManager.get<string>(userKey);
-    this.logger.log('cacheGet data', previousData);
-    this.logger.log('==================');
     if (!previousData) return new FitQuestionnaire(userId);
     const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
     return questionnaireData;
   }
 
   async cacheSet(ctx: TelegrafContext, questionnaireData: FitQuestionnaire) {
-    this.logger.log('===> cacheSet');
     const [userKey] = this.getUserId(ctx);
-    this.logger.log('cacheSet for', userKey);
-    this.logger.log('cacheSet data', JSON.stringify(questionnaireData));
     await this.cacheManager.set(userKey, JSON.stringify(questionnaireData));
-    this.logger.log('==================');
   }
 
   async showQuestion(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
@@ -110,9 +112,19 @@ export class TgBotService {
       const currentUpdate = ctx.update;
       if (!('message' in currentUpdate)) throw new Error('No message');
       if (!('text' in currentUpdate.message)) throw new Error('No text');
-
       const questionnaireData = await this.cacheGet(ctx);
-      console.log('questionnaireData', questionnaireData);
+
+      // Handle a rare case when cache expires mid-conversation
+      if ('reply_to_message' in currentUpdate.message && 'text' in currentUpdate.message.reply_to_message) {
+        const currentQuestionText = this.getQuestionData(questionnaireData)[1];
+        const { text } = currentUpdate.message.reply_to_message;
+        if (text !== currentQuestionText) {
+          await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+          await this.showQuestion(ctx, questionnaireData);
+          return;
+        }
+      }
+
       const { text } = currentUpdate.message;
       // TODO: extract getQuestionData into utils
       const [type] = this.getQuestionData(questionnaireData);
@@ -123,6 +135,10 @@ export class TgBotService {
 
       // TODO: probably parse data
       this.addResponse(text, questionnaireData);
+      if (this.isQuestionnaireComplete(questionnaireData)) {
+        await this.completeQuestionnaire(questionnaireData);
+        return;
+      }
       await this.cacheSet(ctx, questionnaireData);
       this.showQuestion(ctx, questionnaireData);
     } catch (error) {
@@ -156,9 +172,18 @@ export class TgBotService {
   }
 
   addResponse(response: AnswerData, questionnaire: FitQuestionnaire): void {
-    // TODO: probably parse data
+    // TODO: probably parse data;
     questionnaire.questions[questionnaire.currentQuestionIndex].response = response;
     questionnaire.currentQuestionIndex += 1;
+  }
+
+  isQuestionnaireComplete(questionnaire: FitQuestionnaire): boolean {
+    return questionnaire.currentQuestionIndex === questionnaire.questions.length;
+  }
+
+  async completeQuestionnaire(questionnaire: FitQuestionnaire): Promise<void> {
+    const { userId } = questionnaire;
+    this.tgBot.telegram.sendMessage(userId, 'Thank you for your answers!');
   }
 }
 

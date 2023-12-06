@@ -15,21 +15,21 @@ export class TgBotUppdate {
 
   @Help()
   async help(@Ctx() ctx: TelegrafContext) {
-    await ctx.reply(`I'll save you`);
+    await this.tgBotService.help(ctx);
   }
 
   @Hears('/restart')
   async restart(@Ctx() ctx: TelegrafContext) {
-    this.tgBotService.restart(ctx);
+    await this.tgBotService.restart(ctx);
   }
 
   @On('text')
   async handleText(@Ctx() ctx: TelegrafContext) {
-    this.tgBotService.checkAnswer(ctx);
+    await this.tgBotService.checkAnswer(ctx);
   }
 
   @On('callback_query')
   async handleCallback(@Ctx() ctx: TelegrafContext) {
-    this.tgBotService.checkOptionsAnswer(ctx);
+    await this.tgBotService.checkOptionsAnswer(ctx);
   }
 }

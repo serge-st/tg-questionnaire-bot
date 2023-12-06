@@ -12,6 +12,7 @@ import { InputUtilsService } from './input-utils.service';
     TelegrafModule.forRootAsync({
       imports: [ConfigModule],
       inject: [ConfigService],
+      botName: 'tg-bot',
       useFactory: async (configService: ConfigService) => {
         const token = configService.get<string>('TG_BOT_TOKEN');
         return { token };
