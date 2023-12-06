@@ -56,10 +56,21 @@ export class TgBotService {
     return [userKey, userId];
   }
 
+  getUserInfo(ctx: TelegrafContext): string | null {
+    const currentUpdate = ctx.update;
+    if (!('message' in currentUpdate)) throw new Error('No message');
+    return currentUpdate.message.from.username
+      ? '@' + currentUpdate.message.from.username
+      : currentUpdate.message.from.first_name
+        ? currentUpdate.message.from.first_name
+        : null;
+  }
+
   async cacheGet(ctx: TelegrafContext): Promise<FitQuestionnaire> {
     const [userKey, userId] = this.getUserId(ctx);
+    const userInfo = this.getUserInfo(ctx);
     const previousData = await this.cacheManager.get<string>(userKey);
-    if (!previousData) return new FitQuestionnaire(userId);
+    if (!previousData) return new FitQuestionnaire(userId, userInfo);
     const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
     return questionnaireData;
   }
@@ -182,10 +193,23 @@ export class TgBotService {
   }
 
   async completeQuestionnaire(questionnaire: FitQuestionnaire): Promise<void> {
-    const { userId } = questionnaire;
-    this.tgBot.telegram.sendMessage(userId, 'Thank you for your answers!');
+    const { userId, userInfo } = questionnaire;
+    const date = new Date();
+    await this.tgBot.telegram.sendMessage(
+      userId,
+      'Thank you for your answers!\n\nPlease reach out to @DriadaRoids to get the results.',
+    );
+    const responseHeader = `${date}\nПользователь ${userInfo} заполнил опрос:\n\n`;
+    const responseBody = questionnaire.questions.map((q) => `*${q.responseKey}:*\n${q.response}`).join('\n\n');
+
+    await this.tgBot.telegram.sendMessage(userId, responseHeader);
+    await this.tgBot.telegram.sendMessage(userId, responseBody, {
+      parse_mode: 'Markdown',
+    });
+    // send photo
   }
 }
+// await this.tgBot.telegram.sendMessage(userId, `${date}\nПользователь ${userInfo} заполнил опрос:`);
 
 // async test(ctx: TelegrafContext): Promise<void> {
 //   if (!('message' in ctx.update)) throw new Error('No message');
