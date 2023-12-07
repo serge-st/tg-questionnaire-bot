@@ -37,3 +37,4 @@ lerna-debug.log*
 .env
 message-data-example.json
 message-with-picture.json
+message-callback-example.json

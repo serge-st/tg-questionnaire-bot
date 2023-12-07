@@ -9,6 +9,7 @@ import { TelegrafContext } from './types';
 import { AnswerData, FitQuestionnaire } from './fit-questionnaire';
 import { InputDataType, InputUtilsService, ValidationResult } from './input-utils.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
+import { promises as fs } from 'fs';
 
 @Injectable()
 export class TgBotService {
@@ -49,6 +50,7 @@ export class TgBotService {
   }
 
   getUserId(ctx: TelegrafContext): [string, number] {
+    fs.writeFile('message-callback-example.json', JSON.stringify(ctx, null, 2));
     const currentUpdate = ctx.update;
     if (!('message' in currentUpdate)) throw new Error('No message');
     const userId = currentUpdate.message.from.id;
@@ -111,7 +113,13 @@ export class TgBotService {
   }
 
   async showBooleanQuestion(ctx: TelegrafContext, text: string): Promise<void> {
-    this.logger.log('showBooleanQuestion', ctx, text);
+    await ctx.reply(text, {
+      reply_markup: {
+        force_reply: true,
+        input_field_placeholder: '8',
+        inline_keyboard: this.inlineKeyboardService.getBooleanSelector(),
+      },
+    });
   }
 
   async showOptionsQuestion(ctx: TelegrafContext, text: string): Promise<void> {
@@ -144,7 +152,6 @@ export class TgBotService {
       const { isValid, errors } = await this.inputUtilsService.validate[type](text);
       if (!isValid) return this.invalidAnswer(ctx, errors);
 
-      // TODO: probably parse data
       this.addResponse(text, questionnaireData);
       if (this.isQuestionnaireComplete(questionnaireData)) {
         await this.completeQuestionnaire(questionnaireData);
@@ -159,7 +166,28 @@ export class TgBotService {
   }
 
   async checkOptionsAnswer(ctx: TelegrafContext): Promise<void> {
-    this.logger.log('checkOptionsAnswer', ctx);
+    console.log('checkOptionsAnswer', ctx.update);
+    // TODO: habdle case if data is sent as text
+    // if (!('message' in ctx.update)) throw new Error('No message');
+    // if (!('text' in ctx.update.message)) throw new Error('No text');
+    // const { text } = ctx.update.message;
+
+    if (!('data' in ctx.callbackQuery)) throw new Error('No data in the callback');
+    const questionnaireData = await this.cacheGet(ctx);
+    const [type] = this.getQuestionData(questionnaireData);
+    // TODO: use validation only in case of text input
+    if (type === 'boolean') {
+      const { data } = ctx.callbackQuery;
+      const { isValid, errors } = await this.inputUtilsService.validate[type](data);
+      if (!isValid) return this.invalidAnswer(ctx, errors);
+      this.addResponse(data, questionnaireData);
+    }
+    if (this.isQuestionnaireComplete(questionnaireData)) {
+      await this.completeQuestionnaire(questionnaireData);
+      return;
+    }
+    await this.cacheSet(ctx, questionnaireData);
+    this.showQuestion(ctx, questionnaireData);
   }
 
   async invalidAnswer(ctx: TelegrafContext, errors: ValidationResult['errors']): Promise<void> {
