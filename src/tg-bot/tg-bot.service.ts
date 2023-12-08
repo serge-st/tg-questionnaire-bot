@@ -34,13 +34,15 @@ export class TgBotService {
 
   async start(ctx: TelegrafContext): Promise<void> {
     try {
-      const questionnaireData = await this.cacheGet(ctx);
+      const cachedData = await this.cacheGet(ctx);
+      const questionnaireData = cachedData ? cachedData : this.startNewSession(ctx);
       const { currentQuestionIndex } = questionnaireData;
       if (currentQuestionIndex === 0) {
         await ctx.reply(`Great, let's start!`);
       } else {
         await ctx.reply(`Ok, let's continue!`);
       }
+      await this.cacheSet(ctx, questionnaireData);
       await this.showQuestion(ctx, questionnaireData);
     } catch (error) {
       this.logger.error('start', error);
@@ -50,9 +52,11 @@ export class TgBotService {
 
   async restart(ctx: TelegrafContext): Promise<void> {
     try {
-      const questionnaireData = await this.cacheGet(ctx);
+      const cachedData = await this.cacheGet(ctx);
+      const questionnaireData = cachedData ? cachedData : this.startNewSession(ctx);
       questionnaireData.currentQuestionIndex = 0;
       await ctx.reply(`Ok, let's start from the beginning!`);
+      await this.cacheSet(ctx, questionnaireData);
       await this.showQuestion(ctx, questionnaireData);
     } catch (error) {
       this.logger.error('restart', error);
@@ -60,12 +64,12 @@ export class TgBotService {
     }
   }
 
-  getUserId(ctx: TelegrafContext): [string, number] {
+  getUserId(ctx: TelegrafContext): { userKey: string; userId: number } {
     const currentUpdate = ctx.update;
     if (!('message' in currentUpdate)) throw new Error('No message');
     const userId = currentUpdate.message.from.id;
     const userKey = userId.toString();
-    return [userKey, userId];
+    return { userKey, userId };
   }
 
   getUserInfo(ctx: TelegrafContext): string | null {
@@ -78,17 +82,23 @@ export class TgBotService {
         : null;
   }
 
-  async cacheGet(ctx: TelegrafContext): Promise<FitQuestionnaire> {
-    const [userKey, userId] = this.getUserId(ctx);
+  startNewSession(ctx: TelegrafContext): FitQuestionnaire {
+    const { userId } = this.getUserId(ctx);
     const userInfo = this.getUserInfo(ctx);
+    const questionnaireData = new FitQuestionnaire(userId, userInfo);
+    return questionnaireData;
+  }
+
+  async cacheGet(ctx: TelegrafContext): Promise<FitQuestionnaire | null> {
+    const { userKey } = this.getUserId(ctx);
     const previousData = await this.cacheManager.get<string>(userKey);
-    if (!previousData) return new FitQuestionnaire(userId, userInfo);
+    if (!previousData) return null;
     const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
     return questionnaireData;
   }
 
   async cacheSet(ctx: TelegrafContext, questionnaireData: FitQuestionnaire) {
-    const [userKey] = this.getUserId(ctx);
+    const { userKey } = this.getUserId(ctx);
     await this.cacheManager.set(userKey, JSON.stringify(questionnaireData));
   }
 
@@ -126,7 +136,7 @@ export class TgBotService {
     await ctx.reply(text, {
       reply_markup: {
         force_reply: true,
-        input_field_placeholder: '8',
+        input_field_placeholder: '',
         inline_keyboard: this.inlineKeyboardService.getBooleanSelector(),
       },
     });
@@ -143,15 +153,9 @@ export class TgBotService {
       if (!('text' in currentUpdate.message)) throw new Error('No text');
       const questionnaireData = await this.cacheGet(ctx);
 
-      // Handle a rare case when cache expires mid-conversation
-      if ('reply_to_message' in currentUpdate.message && 'text' in currentUpdate.message.reply_to_message) {
-        const currentQuestionText = this.utilsService.getQuestionData(questionnaireData)[1];
-        const { text } = currentUpdate.message.reply_to_message;
-        if (text !== currentQuestionText) {
-          await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
-          await this.showQuestion(ctx, questionnaireData);
-          return;
-        }
+      if (!questionnaireData) {
+        ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        this.restart(ctx);
       }
 
       const { text } = currentUpdate.message;
