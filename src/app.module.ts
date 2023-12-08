@@ -4,7 +4,6 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import configuration from '../config/configuration';
 import { TgBotModule } from 'tg-bot/tg-bot.module';
-import { UtilsModule } from './utils/utils.module';
 
 @Module({
   imports: [
@@ -12,7 +11,6 @@ import { UtilsModule } from './utils/utils.module';
       load: [configuration],
     }),
     TgBotModule,
-    UtilsModule,
   ],
   controllers: [AppController],
   providers: [AppService],

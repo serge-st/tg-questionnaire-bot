@@ -5,7 +5,7 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { TgBotUppdate } from './tg-bot.update';
 import { TgBotService } from './tg-bot.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
-import { InputUtilsService } from './input-utils.service';
+import { UtilsService } from './utils.service';
 
 @Module({
   imports: [
@@ -23,6 +23,6 @@ import { InputUtilsService } from './input-utils.service';
       ttl: 60 * 60 * 1000, // = 1h, time in milliseconds
     }),
   ],
-  providers: [TgBotUppdate, TgBotService, InlineKeyboardService, InputUtilsService],
+  providers: [TgBotUppdate, TgBotService, InlineKeyboardService, UtilsService],
 })
 export class TgBotModule {}

@@ -2,15 +2,16 @@ import { Injectable } from '@nestjs/common';
 import { validate as cvValidate } from 'class-validator';
 import { StringInputDTO, NumberInputDTO, EmailInputDTO, BooleanInputDTO } from './dto';
 import { OptionsInputDTO } from './dto/options-input.dto';
+import { FitQuestionnaire, AnswerData } from './fit-questionnaire';
 
-export type InputDataType = keyof InputUtilsService['validate'];
+export type InputDataType = keyof UtilsService['validate'];
 export type ValidationResult = {
   isValid: boolean;
   errors: string[];
 };
 
 @Injectable()
-export class InputUtilsService {
+export class UtilsService {
   validate = {
     string: async (input: string): Promise<ValidationResult> => {
       const dto = new StringInputDTO(input);
@@ -53,13 +54,18 @@ export class InputUtilsService {
     return input.replaceAll(' ', '').replace(',', '.');
   };
 
-  parseNumber = (input: string): number | null => {
-    const formattedInput = input.replaceAll(' ', '').replace(',', '.');
-    const parsed = parseFloat(formattedInput);
-    return isNaN(parsed) ? null : parsed;
-  };
+  getQuestionData(questionnaire: FitQuestionnaire): [InputDataType, string, string | undefined] {
+    const question = questionnaire.questions[questionnaire.currentQuestionIndex];
+    const { text, placeholder, type } = question;
+    return [type, text, placeholder];
+  }
 
-  parseBoolean = (input: string): boolean | null => {
-    return input === 'true' ? true : input === 'false' ? false : null;
-  };
+  addResponse(response: AnswerData, questionnaire: FitQuestionnaire): void {
+    questionnaire.questions[questionnaire.currentQuestionIndex].response = response;
+    questionnaire.currentQuestionIndex += 1;
+  }
+
+  isQuestionnaireComplete(questionnaire: FitQuestionnaire): boolean {
+    return questionnaire.currentQuestionIndex === questionnaire.questions.length;
+  }
 }

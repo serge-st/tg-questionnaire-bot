@@ -1,4 +1,4 @@
-import { InputDataType } from './input-utils.service';
+import { InputDataType } from './utils.service';
 
 export type Question = {
   text: string;
@@ -9,11 +9,6 @@ export type Question = {
 };
 
 export type AnswerData = number | string | boolean | 'skipped';
-
-// type Answer = {
-//   questionId: Question['id'];
-//   data: AnswerData;
-// };
 
 export class FitQuestionnaire {
   readonly questions: Question[] = [
@@ -56,28 +51,6 @@ export class FitQuestionnaire {
   userInfo: string | null;
   currentQuestionIndex = 0;
   submittionTime: Date;
-
-  // addResponse(response: AnswerData): void {
-  //   // TODO: probably parse data
-  //   this.questions[this.currentQuestionIndex].response = response;
-  //   this.currentQuestionIndex += 1;
-  // }
-
-  // getQuestionData(): [InputDataType, string, string | undefined] {
-  //   const question = this.questions[this.currentQuestionIndex];
-  //   const { text, placeholder, type } = question;
-  //   return [type, text, placeholder];
-  // }
-
-  // TODO: Move the rest of the methods out of this class
-  isComplete() {
-    return this.currentQuestionIndex === this.questions.length;
-  }
-
-  finishQuestionnaire() {
-    this.submittionTime = new Date();
-    // TODO: create a final report
-  }
 
   constructor(userId: number, userInfo: string | null = null) {
     this.userId = userId;

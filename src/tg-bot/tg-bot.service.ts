@@ -6,10 +6,9 @@ import { Cache } from 'cache-manager';
 import { InjectBot } from 'nestjs-telegraf';
 import { Context, Telegraf } from 'telegraf';
 import { TelegrafContext } from './types';
-import { AnswerData, FitQuestionnaire } from './fit-questionnaire';
-import { InputDataType, InputUtilsService, ValidationResult } from './input-utils.service';
+import { FitQuestionnaire } from './fit-questionnaire';
+import { UtilsService, ValidationResult } from './utils.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
-import { promises as fs } from 'fs';
 
 @Injectable()
 export class TgBotService {
@@ -21,7 +20,7 @@ export class TgBotService {
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @InjectBot('tg-bot') private tgBot: Telegraf<Context>,
     private readonly configService: ConfigService,
-    private readonly inputUtilsService: InputUtilsService,
+    private readonly utilsService: UtilsService,
     private readonly inlineKeyboardService: InlineKeyboardService,
   ) {
     this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
@@ -49,8 +48,19 @@ export class TgBotService {
     }
   }
 
+  async restart(ctx: TelegrafContext): Promise<void> {
+    try {
+      const questionnaireData = await this.cacheGet(ctx);
+      questionnaireData.currentQuestionIndex = 0;
+      await ctx.reply(`Ok, let's start from the beginning!`);
+      await this.showQuestion(ctx, questionnaireData);
+    } catch (error) {
+      this.logger.error('restart', error);
+      await ctx.reply(this.serviceErrorText);
+    }
+  }
+
   getUserId(ctx: TelegrafContext): [string, number] {
-    fs.writeFile('message-callback-example.json', JSON.stringify(ctx, null, 2));
     const currentUpdate = ctx.update;
     if (!('message' in currentUpdate)) throw new Error('No message');
     const userId = currentUpdate.message.from.id;
@@ -84,7 +94,7 @@ export class TgBotService {
 
   async showQuestion(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
     try {
-      const [type, text, placeholder] = this.getQuestionData(questionnaireData);
+      const [type, text, placeholder] = this.utilsService.getQuestionData(questionnaireData);
 
       switch (type) {
         case 'boolean':
@@ -135,7 +145,7 @@ export class TgBotService {
 
       // Handle a rare case when cache expires mid-conversation
       if ('reply_to_message' in currentUpdate.message && 'text' in currentUpdate.message.reply_to_message) {
-        const currentQuestionText = this.getQuestionData(questionnaireData)[1];
+        const currentQuestionText = this.utilsService.getQuestionData(questionnaireData)[1];
         const { text } = currentUpdate.message.reply_to_message;
         if (text !== currentQuestionText) {
           await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
@@ -145,15 +155,14 @@ export class TgBotService {
       }
 
       const { text } = currentUpdate.message;
-      // TODO: extract getQuestionData into utils
-      const [type] = this.getQuestionData(questionnaireData);
+      const [type] = this.utilsService.getQuestionData(questionnaireData);
 
       if (type === 'options' || type === 'boolean') return this.checkOptionsAnswer(ctx);
-      const { isValid, errors } = await this.inputUtilsService.validate[type](text);
+      const { isValid, errors } = await this.utilsService.validate[type](text);
       if (!isValid) return this.invalidAnswer(ctx, errors);
 
-      this.addResponse(text, questionnaireData);
-      if (this.isQuestionnaireComplete(questionnaireData)) {
+      this.utilsService.addResponse(text, questionnaireData);
+      if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
         await this.completeQuestionnaire(questionnaireData);
         return;
       }
@@ -174,15 +183,15 @@ export class TgBotService {
 
     if (!('data' in ctx.callbackQuery)) throw new Error('No data in the callback');
     const questionnaireData = await this.cacheGet(ctx);
-    const [type] = this.getQuestionData(questionnaireData);
+    const [type] = this.utilsService.getQuestionData(questionnaireData);
     // TODO: use validation only in case of text input
     if (type === 'boolean') {
       const { data } = ctx.callbackQuery;
-      const { isValid, errors } = await this.inputUtilsService.validate[type](data);
+      const { isValid, errors } = await this.utilsService.validate[type](data);
       if (!isValid) return this.invalidAnswer(ctx, errors);
-      this.addResponse(data, questionnaireData);
+      this.utilsService.addResponse(data, questionnaireData);
     }
-    if (this.isQuestionnaireComplete(questionnaireData)) {
+    if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
       await this.completeQuestionnaire(questionnaireData);
       return;
     }
@@ -194,30 +203,6 @@ export class TgBotService {
     for (const error of errors) {
       await ctx.reply(error);
     }
-  }
-
-  async restart(ctx: TelegrafContext): Promise<void> {
-    // TODO: probably refactor and re-use start
-    const questionnaireData = await this.cacheGet(ctx);
-    questionnaireData.currentQuestionIndex = 0;
-    await ctx.reply(`Ok, let's start from the beginning!`);
-    await this.showQuestion(ctx, questionnaireData);
-  }
-
-  getQuestionData(questionnaire: FitQuestionnaire): [InputDataType, string, string | undefined] {
-    const question = questionnaire.questions[questionnaire.currentQuestionIndex];
-    const { text, placeholder, type } = question;
-    return [type, text, placeholder];
-  }
-
-  addResponse(response: AnswerData, questionnaire: FitQuestionnaire): void {
-    // TODO: probably parse data;
-    questionnaire.questions[questionnaire.currentQuestionIndex].response = response;
-    questionnaire.currentQuestionIndex += 1;
-  }
-
-  isQuestionnaireComplete(questionnaire: FitQuestionnaire): boolean {
-    return questionnaire.currentQuestionIndex === questionnaire.questions.length;
   }
 
   async completeQuestionnaire(questionnaire: FitQuestionnaire): Promise<void> {
