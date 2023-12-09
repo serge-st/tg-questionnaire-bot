@@ -68,4 +68,7 @@ export class UtilsService {
   isQuestionnaireComplete(questionnaire: FitQuestionnaire): boolean {
     return questionnaire.currentQuestionIndex === questionnaire.questions.length;
   }
+
+  // TODO: add check if message function to check for:
+  // context ('message' in currentUpdate).
 }

@@ -179,28 +179,68 @@ export class TgBotService {
   }
 
   async checkOptionsAnswer(ctx: TelegrafContext): Promise<void> {
-    console.log('checkOptionsAnswer', ctx.update);
-    // TODO: habdle case if data is sent as text
-    // if (!('message' in ctx.update)) throw new Error('No message');
-    // if (!('text' in ctx.update.message)) throw new Error('No text');
-    // const { text } = ctx.update.message;
+    try {
+      const questionnaireData = await this.cacheGet(ctx);
+      const [type] = this.utilsService.getQuestionData(questionnaireData);
+      if ('message' in ctx.update && 'text' in ctx.update.message) {
+        const { text } = ctx.update.message;
 
-    if (!('data' in ctx.callbackQuery)) throw new Error('No data in the callback');
-    const questionnaireData = await this.cacheGet(ctx);
-    const [type] = this.utilsService.getQuestionData(questionnaireData);
-    // TODO: use validation only in case of text input
-    if (type === 'boolean') {
-      const { data } = ctx.callbackQuery;
-      const { isValid, errors } = await this.utilsService.validate[type](data);
-      if (!isValid) return this.invalidAnswer(ctx, errors);
-      this.utilsService.addResponse(data, questionnaireData);
+        switch (type) {
+          case 'boolean': {
+            const { isValid, errors } = await this.utilsService.validate[type](text);
+            if (!isValid) return this.invalidAnswer(ctx, errors);
+
+            // TODO: refactor
+            this.utilsService.addResponse(text, questionnaireData);
+            if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
+              await this.completeQuestionnaire(questionnaireData);
+              return;
+            }
+            await this.cacheSet(ctx, questionnaireData);
+            this.showQuestion(ctx, questionnaireData);
+            break;
+          }
+          case 'options': {
+            const optionsArray = []; // TODO: get options array
+            const { isValid, errors } = await this.utilsService.validate[type](text, optionsArray);
+            if (!isValid) return this.invalidAnswer(ctx, errors);
+
+            // TODO: refactor
+            this.utilsService.addResponse(text, questionnaireData);
+            if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
+              await this.completeQuestionnaire(questionnaireData);
+              return;
+            }
+            await this.cacheSet(ctx, questionnaireData);
+            this.showQuestion(ctx, questionnaireData);
+            break;
+          }
+          default: {
+            throw new Error('Invalid question type');
+          }
+        }
+      }
+
+      // if (!('data' in ctx.callbackQuery)) throw new Error('No data in the callback');
+      // const questionnaireData = await this.cacheGet(ctx);
+      // const [type] = this.utilsService.getQuestionData(questionnaireData);
+      // // TODO: use validation only in case of text input
+      // if (type === 'boolean') {
+      //   const { data } = ctx.callbackQuery;
+      //   const { isValid, errors } = await this.utilsService.validate[type](data);
+      //   if (!isValid) return this.invalidAnswer(ctx, errors);
+      //   this.utilsService.addResponse(data, questionnaireData);
+      // }
+      // if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
+      //   await this.completeQuestionnaire(questionnaireData);
+      //   return;
+      // }
+      // await this.cacheSet(ctx, questionnaireData);
+      // this.showQuestion(ctx, questionnaireData);
+    } catch (error) {
+      this.logger.error('checkOptionsAnswer', error);
+      await ctx.reply(this.serviceErrorText);
     }
-    if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
-      await this.completeQuestionnaire(questionnaireData);
-      return;
-    }
-    await this.cacheSet(ctx, questionnaireData);
-    this.showQuestion(ctx, questionnaireData);
   }
 
   async invalidAnswer(ctx: TelegrafContext, errors: ValidationResult['errors']): Promise<void> {
