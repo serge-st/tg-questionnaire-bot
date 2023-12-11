@@ -4,6 +4,7 @@ import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { InjectBot } from 'nestjs-telegraf';
+import { User as TgUser } from 'telegraf/typings/core/types/typegram';
 import { Context, Telegraf } from 'telegraf';
 import { TelegrafContext } from './types';
 import { FitQuestionnaire } from './fit-questionnaire';
@@ -65,21 +66,25 @@ export class TgBotService {
   }
 
   getUserId(ctx: TelegrafContext): { userKey: string; userId: number } {
-    const currentUpdate = ctx.update;
-    if (!('message' in currentUpdate)) throw new Error('No message');
-    const userId = currentUpdate.message.from.id;
+    const updateFrom = this.getUpdateFrom(ctx);
+    const userId = updateFrom.id;
     const userKey = userId.toString();
     return { userKey, userId };
   }
 
+  getUpdateFrom(ctx: TelegrafContext): TgUser {
+    if ('message' in ctx.update) {
+      return ctx.update.message.from;
+    } else if ('callback_query' in ctx.update) {
+      return ctx.update.callback_query.from;
+    } else {
+      throw new Error('No message or callback_query');
+    }
+  }
+
   getUserInfo(ctx: TelegrafContext): string | null {
-    const currentUpdate = ctx.update;
-    if (!('message' in currentUpdate)) throw new Error('No message');
-    return currentUpdate.message.from.username
-      ? '@' + currentUpdate.message.from.username
-      : currentUpdate.message.from.first_name
-        ? currentUpdate.message.from.first_name
-        : null;
+    const updateFrom = this.getUpdateFrom(ctx);
+    return updateFrom.username ? '@' + updateFrom.username : updateFrom.first_name ? updateFrom.first_name : null;
   }
 
   startNewSession(ctx: TelegrafContext): FitQuestionnaire {
@@ -146,6 +151,16 @@ export class TgBotService {
     this.logger.log('showOptionsQuestion', ctx, text);
   }
 
+  async processResponse(text: string, questionnaireData: FitQuestionnaire, ctx: TelegrafContext): Promise<void> {
+    this.utilsService.addResponse(text, questionnaireData);
+    if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
+      await this.completeQuestionnaire(questionnaireData);
+      return;
+    }
+    await this.cacheSet(ctx, questionnaireData);
+    this.showQuestion(ctx, questionnaireData);
+  }
+
   async checkAnswer(ctx: TelegrafContext): Promise<void> {
     try {
       const currentUpdate = ctx.update;
@@ -165,13 +180,7 @@ export class TgBotService {
       const { isValid, errors } = await this.utilsService.validate[type](text);
       if (!isValid) return this.invalidAnswer(ctx, errors);
 
-      this.utilsService.addResponse(text, questionnaireData);
-      if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
-        await this.completeQuestionnaire(questionnaireData);
-        return;
-      }
-      await this.cacheSet(ctx, questionnaireData);
-      this.showQuestion(ctx, questionnaireData);
+      this.processResponse(text, questionnaireData, ctx);
     } catch (error) {
       this.logger.error('checkAnswer', error);
       await ctx.reply(this.serviceErrorText);
@@ -182,6 +191,8 @@ export class TgBotService {
     try {
       const questionnaireData = await this.cacheGet(ctx);
       const [type] = this.utilsService.getQuestionData(questionnaireData);
+
+      // Validate in case if answer provided as text and not via inline keyboard
       if ('message' in ctx.update && 'text' in ctx.update.message) {
         const { text } = ctx.update.message;
 
@@ -190,14 +201,7 @@ export class TgBotService {
             const { isValid, errors } = await this.utilsService.validate[type](text);
             if (!isValid) return this.invalidAnswer(ctx, errors);
 
-            // TODO: refactor
-            this.utilsService.addResponse(text, questionnaireData);
-            if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
-              await this.completeQuestionnaire(questionnaireData);
-              return;
-            }
-            await this.cacheSet(ctx, questionnaireData);
-            this.showQuestion(ctx, questionnaireData);
+            this.processResponse(text, questionnaireData, ctx);
             break;
           }
           case 'options': {
@@ -205,14 +209,7 @@ export class TgBotService {
             const { isValid, errors } = await this.utilsService.validate[type](text, optionsArray);
             if (!isValid) return this.invalidAnswer(ctx, errors);
 
-            // TODO: refactor
-            this.utilsService.addResponse(text, questionnaireData);
-            if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
-              await this.completeQuestionnaire(questionnaireData);
-              return;
-            }
-            await this.cacheSet(ctx, questionnaireData);
-            this.showQuestion(ctx, questionnaireData);
+            this.processResponse(text, questionnaireData, ctx);
             break;
           }
           default: {
@@ -221,22 +218,10 @@ export class TgBotService {
         }
       }
 
-      // if (!('data' in ctx.callbackQuery)) throw new Error('No data in the callback');
-      // const questionnaireData = await this.cacheGet(ctx);
-      // const [type] = this.utilsService.getQuestionData(questionnaireData);
-      // // TODO: use validation only in case of text input
-      // if (type === 'boolean') {
-      //   const { data } = ctx.callbackQuery;
-      //   const { isValid, errors } = await this.utilsService.validate[type](data);
-      //   if (!isValid) return this.invalidAnswer(ctx, errors);
-      //   this.utilsService.addResponse(data, questionnaireData);
-      // }
-      // if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
-      //   await this.completeQuestionnaire(questionnaireData);
-      //   return;
-      // }
-      // await this.cacheSet(ctx, questionnaireData);
-      // this.showQuestion(ctx, questionnaireData);
+      if ('callback_query' in ctx.update && 'data' in ctx.update.callback_query) {
+        const { data } = ctx.update.callback_query;
+        this.processResponse(data, questionnaireData, ctx);
+      }
     } catch (error) {
       this.logger.error('checkOptionsAnswer', error);
       await ctx.reply(this.serviceErrorText);

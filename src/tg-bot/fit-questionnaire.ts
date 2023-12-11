@@ -13,12 +13,13 @@ export type AnswerData = number | string | boolean | 'skipped';
 export class FitQuestionnaire {
   readonly questions: Question[] = [
     // * STEP 1 - GENERAL DATA
-    // {
-    //   text: 'Please enter your email',
-    //   responseKey: 'email',
-    //   placeholder: 'E.g.: me@domain.com',
-    //   type: 'email',
-    // },
+    { text: 'Do you have any health chronic diseases', type: 'boolean', responseKey: 'hasChronicDiseases' },
+    {
+      text: 'Please enter your email',
+      responseKey: 'email',
+      placeholder: 'E.g.: me@domain.com',
+      type: 'email',
+    },
     {
       text: 'Please enter your height in cm',
       responseKey: 'height',
@@ -43,7 +44,6 @@ export class FitQuestionnaire {
     //   placeholder: 'E.g.: 3',
     //   type: 'number',
     // },
-    { text: 'Do you have any health chronic diseases', type: 'boolean', responseKey: 'hasChronicDiseases' },
     { text: 'What kind of health chronic diseases?', type: 'string', responseKey: 'chronicDiseases' },
   ];
 
