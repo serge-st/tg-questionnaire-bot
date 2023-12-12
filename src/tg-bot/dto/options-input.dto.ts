@@ -2,8 +2,8 @@ import { IsString } from 'class-validator';
 import { IsOneOfOptions } from 'tg-bot/decorators';
 
 export class OptionsInputDTO {
-  @IsString({ message: 'The input must be a string' })
-  @IsOneOfOptions('options', { message: 'The input must be one of the options' })
+  @IsString({ message: 'The reply must be a string' })
+  @IsOneOfOptions('options', { message: 'The reply must be one of the options' })
   input: string;
 
   @IsString({ each: true, message: 'Each option must be a string' })

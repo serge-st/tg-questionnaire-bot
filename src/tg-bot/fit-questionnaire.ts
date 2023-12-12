@@ -6,6 +6,12 @@ export type Question = {
   placeholder?: string;
   type: InputDataType;
   response?: AnswerData;
+  options?: Option[];
+};
+
+export type Option = {
+  label: string;
+  value: AnswerData;
 };
 
 export type AnswerData = number | string | boolean | 'skipped';
@@ -25,6 +31,16 @@ export class FitQuestionnaire {
       responseKey: 'height',
       placeholder: 'E.g.: 175',
       type: 'number',
+    },
+    {
+      text: 'Choose concept:',
+      responseKey: 'concept',
+      type: 'options',
+      options: [
+        { label: 'Concept of minimalism', value: 'minimalism' },
+        { label: 'Hardcore', value: 'hardcore' },
+        { label: 'Something in between', value: 'average' },
+      ],
     },
     // {
     //   text: 'Please enter your weight in kg',

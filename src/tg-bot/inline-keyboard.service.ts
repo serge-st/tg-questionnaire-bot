@@ -1,5 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
+import { Option } from './fit-questionnaire';
 
 @Injectable()
 export class InlineKeyboardService {
@@ -34,5 +35,9 @@ export class InlineKeyboardService {
       [{ text: 'Hardcore', callback_data: 'hardcore' }],
       [{ text: 'Something in between', callback_data: 'average' }],
     ];
+  }
+
+  renderOptions(options: Option[]): InlineKeyboardButton[][] {
+    return options.map((option) => [{ text: option.label, callback_data: option.value.toString() }]);
   }
 }

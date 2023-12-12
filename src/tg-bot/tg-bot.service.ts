@@ -116,7 +116,7 @@ export class TgBotService {
           await this.showBooleanQuestion(ctx, text);
           break;
         case 'options':
-          await this.showOptionsQuestion(ctx, text);
+          await this.showOptionsQuestion(ctx, questionnaireData);
           break;
         default:
           await this.showTextQuestion(ctx, text, placeholder);
@@ -147,8 +147,16 @@ export class TgBotService {
     });
   }
 
-  async showOptionsQuestion(ctx: TelegrafContext, text: string): Promise<void> {
-    this.logger.log('showOptionsQuestion', ctx, text);
+  async showOptionsQuestion(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
+    const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
+    const { text, options } = question;
+    await ctx.reply(text, {
+      reply_markup: {
+        force_reply: true,
+        input_field_placeholder: '',
+        inline_keyboard: this.inlineKeyboardService.renderOptions(options),
+      },
+    });
   }
 
   async processResponse(text: string, questionnaireData: FitQuestionnaire, ctx: TelegrafContext): Promise<void> {
@@ -158,7 +166,7 @@ export class TgBotService {
       return;
     }
     await this.cacheSet(ctx, questionnaireData);
-    this.showQuestion(ctx, questionnaireData);
+    await this.showQuestion(ctx, questionnaireData);
   }
 
   async checkAnswer(ctx: TelegrafContext): Promise<void> {
@@ -178,7 +186,7 @@ export class TgBotService {
 
       if (type === 'options' || type === 'boolean') return this.checkOptionsAnswer(ctx);
       const { isValid, errors } = await this.utilsService.validate[type](text);
-      if (!isValid) return this.invalidAnswer(ctx, errors);
+      if (!isValid) return await this.invalidAnswer(ctx, errors);
 
       this.processResponse(text, questionnaireData, ctx);
     } catch (error) {
@@ -187,10 +195,11 @@ export class TgBotService {
     }
   }
 
+  // TODO: if error on options or boolean, send error and inline keyboard again
   async checkOptionsAnswer(ctx: TelegrafContext): Promise<void> {
     try {
       const questionnaireData = await this.cacheGet(ctx);
-      const [type] = this.utilsService.getQuestionData(questionnaireData);
+      const [type, questionText] = this.utilsService.getQuestionData(questionnaireData);
 
       // Validate in case if answer provided as text and not via inline keyboard
       if ('message' in ctx.update && 'text' in ctx.update.message) {
@@ -199,15 +208,24 @@ export class TgBotService {
         switch (type) {
           case 'boolean': {
             const { isValid, errors } = await this.utilsService.validate[type](text);
-            if (!isValid) return this.invalidAnswer(ctx, errors);
+            if (!isValid) {
+              await this.invalidAnswer(ctx, errors);
+              await this.showBooleanQuestion(ctx, questionText);
+              return;
+            }
 
             this.processResponse(text, questionnaireData, ctx);
             break;
           }
           case 'options': {
-            const optionsArray = []; // TODO: get options array
-            const { isValid, errors } = await this.utilsService.validate[type](text, optionsArray);
-            if (!isValid) return this.invalidAnswer(ctx, errors);
+            const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
+            const optionStrings = question.options.map((option) => option.value.toString());
+            const { isValid, errors } = await this.utilsService.validate[type](text, optionStrings);
+            if (!isValid) {
+              await this.invalidAnswer(ctx, errors);
+              await this.showOptionsQuestion(ctx, questionnaireData);
+              return;
+            }
 
             this.processResponse(text, questionnaireData, ctx);
             break;
@@ -251,6 +269,45 @@ export class TgBotService {
     // send photo
   }
 }
+
+//   async processPhoto(ctx: TelegrafContext): Promise<void> {
+//     try {
+//       const currentUpdate = ctx.update;
+//       if (!('message' in currentUpdate)) throw new Error('No message');
+//       if (!('photo' in currentUpdate.message)) throw new Error('No photo');
+//       const userId = currentUpdate.message.from.id;
+
+//       const { file_id } = currentUpdate.message.photo.at(-1);
+//       const fileLink = await ctx.telegram.getFileLink(file_id);
+
+//       const response = await axios.get(fileLink.toString(), {
+//         responseType: 'arraybuffer',
+//       });
+//       // const fileName = `${this.utilsService.getCurrentUTCDateTime()}-${userId}.jpg`;
+
+//       await fs.writeFile(fileName, response.data);
+
+//       await this.sendPhotoToAdmin(ctx, file_id);
+//     } catch (error) {
+//       this.logger.log(`${ctx.update.update_id} ${error}`);
+//     }
+//   }
+// }
+
+//   async sendPhotoToAdmin(ctx: TelegrafContext, fileId: string): Promise<void> {
+//     try {
+//       const fileLink = await ctx.telegram.getFileLink(fileId);
+//       const response = await axios.get(fileLink.toString(), {
+//         responseType: 'arraybuffer',
+//       });
+//       await ctx.telegram.sendPhoto(this.adminId, {
+//         source: Buffer.from(response.data),
+//       });
+//     } catch (error) {
+//       this.logger.log(`sendPhotoToAdmin: ${ctx.update.update_id} ${error}`);
+//     }
+//   }
+
 // await this.tgBot.telegram.sendMessage(userId, `${date}\nПользователь ${userInfo} заполнил опрос:`);
 
 // async test(ctx: TelegrafContext): Promise<void> {
