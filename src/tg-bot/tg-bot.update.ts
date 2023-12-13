@@ -23,6 +23,9 @@ export class TgBotUppdate {
     await this.tgBotService.restart(ctx);
   }
 
+  // TODO: add command to edit the last reply
+  // @Hears('/edit_last_reply')
+
   @On('text')
   async handleText(@Ctx() ctx: TelegrafContext) {
     await this.tgBotService.checkAnswer(ctx);

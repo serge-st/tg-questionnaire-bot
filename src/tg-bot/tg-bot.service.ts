@@ -124,8 +124,23 @@ export class TgBotService {
     }
   }
 
+  async shouldSkip(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<boolean> {
+    const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
+    const { skipIf } = question;
+    if (!skipIf) return false;
+    const [entries] = Object.entries(skipIf);
+    const [key, value] = entries;
+    const { questions } = questionnaireData;
+    const result = questions.find((q) => q.responseKey === key && q.response === String(value));
+    if (!result) return false;
+    this.processResponse('skipped', questionnaireData, ctx);
+    return true;
+  }
+
   async showQuestion(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
     try {
+      const shouldSkip = await this.shouldSkip(ctx, questionnaireData);
+      if (shouldSkip) return;
       await this.processPreMessage(ctx, questionnaireData);
       const [type, text, placeholder] = this.utilsService.getQuestionData(questionnaireData);
 
@@ -160,7 +175,7 @@ export class TgBotService {
       reply_markup: {
         force_reply: true,
         input_field_placeholder: '',
-        inline_keyboard: this.inlineKeyboardService.getBooleanSelector(),
+        inline_keyboard: this.inlineKeyboardService.renderBooleanSelector(),
       },
     });
   }
@@ -278,12 +293,16 @@ export class TgBotService {
       'Thank you for your answers!\n\nPlease reach out to @DriadaRoids to get the results.',
     );
     const responseHeader = `${date}\nПользователь ${userInfo} заполнил опрос:\n\n`;
-    const responseBody = questionnaire.questions.map((q) => `*${q.responseKey}:*\n${q.response}`).join('\n\n');
+    const responseBody = questionnaire.questions
+      .filter((q) => q.response !== 'skipped')
+      .map((q) => `*${q.responseKey}:*\n${q.response}`)
+      .join('\n\n');
 
     await this.tgBot.telegram.sendMessage(userId, responseHeader);
     await this.tgBot.telegram.sendMessage(userId, responseBody, {
       parse_mode: 'Markdown',
     });
+    // TODO: delete cache after the report is sent
     // send photo
   }
 }
