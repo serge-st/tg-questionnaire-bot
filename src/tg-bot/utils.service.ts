@@ -20,8 +20,6 @@ export class UtilsService {
 
     email: async (input: string): Promise<ValidationResult> => {
       const dto = new EmailInputDTO(input);
-      const result = await this.getValidationResult<EmailInputDTO>(dto);
-      console.log('result', result);
       return this.getValidationResult<EmailInputDTO>(dto);
     },
 

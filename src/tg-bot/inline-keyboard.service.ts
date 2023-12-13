@@ -29,6 +29,10 @@ export class InlineKeyboardService {
     ];
   }
 
+  renderLink(placeholder: string, url: string): InlineKeyboardButton[][] {
+    return [[{ text: placeholder, url }]];
+  }
+
   getArticleReplyButtons(): InlineKeyboardButton[][] {
     return [
       [{ text: 'Concept of minimalism', callback_data: 'minimalism' }],

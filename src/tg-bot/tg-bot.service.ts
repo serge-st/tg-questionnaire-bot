@@ -107,8 +107,26 @@ export class TgBotService {
     await this.cacheManager.set(userKey, JSON.stringify(questionnaireData));
   }
 
+  async processPreMessage(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
+    const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
+    const { preMessage } = question;
+    if (!preMessage) return;
+    const { text, link } = preMessage;
+    if (link) {
+      const { placeholder, url } = link;
+      await ctx.reply(text, {
+        reply_markup: {
+          inline_keyboard: this.inlineKeyboardService.renderLink(placeholder, url),
+        },
+      });
+    } else {
+      await ctx.reply(text);
+    }
+  }
+
   async showQuestion(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
     try {
+      await this.processPreMessage(ctx, questionnaireData);
       const [type, text, placeholder] = this.utilsService.getQuestionData(questionnaireData);
 
       switch (type) {
@@ -269,6 +287,16 @@ export class TgBotService {
     // send photo
   }
 }
+
+//     await ctx.reply(
+//       'Please read the article where you can learn about 3 possible concepts of building a plan for the first cycle:',
+//       {
+//         parse_mode: 'Markdown',
+//         reply_markup: {
+//           inline_keyboard: this.inlineKeyboardService.getArticleLink(),
+//         },
+//       },
+//     );
 
 //   async processPhoto(ctx: TelegrafContext): Promise<void> {
 //     try {

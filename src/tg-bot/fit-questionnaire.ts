@@ -7,6 +7,13 @@ export type Question = {
   type: InputDataType;
   response?: AnswerData;
   options?: Option[];
+  preMessage?: {
+    text: string;
+    link?: {
+      placeholder: string;
+      url: string;
+    };
+  };
 };
 
 export type Option = {
@@ -41,25 +48,32 @@ export class FitQuestionnaire {
         { label: 'Hardcore', value: 'hardcore' },
         { label: 'Something in between', value: 'average' },
       ],
+      preMessage: {
+        text: 'Please read the article where you can learn about 3 possible concepts of building a plan for the first cycle:',
+        link: {
+          placeholder: 'Link to the article',
+          url: 'https://telegra.ph/THREE-CONCEPTS-ON-WHAT-THE-FIRST-CYCLE-OF-STEROIDS-SHOULD-BE-11-28',
+        },
+      },
     },
-    // {
-    //   text: 'Please enter your weight in kg',
-    //   responseKey: 'weight',
-    //   placeholder: 'E.g.: 83',
-    //   type: 'number',
-    // },
-    // {
-    //   text: 'Please enter your age',
-    //   responseKey: 'age',
-    //   placeholder: 'E.g.: 25',
-    //   type: 'number',
-    // },
-    // {
-    //   text: 'What is your workout experience in years',
-    //   responseKey: 'workoutExperience',
-    //   placeholder: 'E.g.: 3',
-    //   type: 'number',
-    // },
+    {
+      text: 'Please enter your weight in kg',
+      responseKey: 'weight',
+      placeholder: 'E.g.: 83',
+      type: 'number',
+    },
+    {
+      text: 'Please enter your age',
+      responseKey: 'age',
+      placeholder: 'E.g.: 25',
+      type: 'number',
+    },
+    {
+      text: 'What is your workout experience in years',
+      responseKey: 'workoutExperience',
+      placeholder: 'E.g.: 3',
+      type: 'number',
+    },
     { text: 'What kind of health chronic diseases?', type: 'string', responseKey: 'chronicDiseases' },
   ];
 
