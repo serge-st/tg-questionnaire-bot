@@ -1,11 +1,11 @@
 import { Inject, Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-// import axios from 'axios';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
 import { InjectBot } from 'nestjs-telegraf';
 import { User as TgUser } from 'telegraf/typings/core/types/typegram';
 import { Context, Telegraf } from 'telegraf';
+import axios from 'axios';
 import { TelegrafContext } from './types';
 import { FitQuestionnaire } from './fit-questionnaire';
 import { UtilsService, ValidationResult } from './utils.service';
@@ -206,12 +206,14 @@ export class TgBotService {
     try {
       const currentUpdate = ctx.update;
       if (!('message' in currentUpdate)) throw new Error('No message');
+      if ('photo' in currentUpdate.message) return this.processPictureResponse(ctx);
       if (!('text' in currentUpdate.message)) throw new Error('No text');
       const questionnaireData = await this.cacheGet(ctx);
 
       if (!questionnaireData) {
         ctx.reply('Sorry for the inconvenience, we need to restart your session.');
         this.restart(ctx);
+        return;
       }
 
       const { text } = currentUpdate.message;
@@ -228,10 +230,37 @@ export class TgBotService {
     }
   }
 
-  // TODO: if error on options or boolean, send error and inline keyboard again
+  async processPictureResponse(ctx: TelegrafContext): Promise<void> {
+    try {
+      if (!('message' in ctx.update)) throw new Error('No message');
+      if (!('photo' in ctx.update.message)) throw new Error('No photo');
+      const questionnaireData = await this.cacheGet(ctx);
+
+      if (!questionnaireData) {
+        ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        this.restart(ctx);
+        return;
+      }
+
+      const { file_id } = ctx.update.message.photo.at(-1);
+      const fileLink = (await ctx.telegram.getFileLink(file_id)).toString();
+      this.processResponse(fileLink, questionnaireData, ctx);
+    } catch (error) {
+      this.logger.error('processPictureResponse', error);
+      await ctx.reply(this.serviceErrorText);
+    }
+  }
+
   async checkOptionsAnswer(ctx: TelegrafContext): Promise<void> {
     try {
       const questionnaireData = await this.cacheGet(ctx);
+
+      if (!questionnaireData) {
+        ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        this.restart(ctx);
+        return;
+      }
+
       const [type, questionText] = this.utilsService.getQuestionData(questionnaireData);
 
       // Validate in case if answer provided as text and not via inline keyboard
@@ -286,36 +315,40 @@ export class TgBotService {
   }
 
   async completeQuestionnaire(questionnaire: FitQuestionnaire): Promise<void> {
-    const { userId, userInfo } = questionnaire;
-    const date = new Date();
-    await this.tgBot.telegram.sendMessage(
-      userId,
-      'Thank you for your answers!\n\nPlease reach out to @DriadaRoids to get the results.',
-    );
-    const responseHeader = `${date}\nПользователь ${userInfo} заполнил опрос:\n\n`;
-    const responseBody = questionnaire.questions
-      .filter((q) => q.response !== 'skipped')
-      .map((q) => `*${q.responseKey}:*\n${q.response}`)
-      .join('\n\n');
+    try {
+      const { userId, userInfo } = questionnaire;
+      const date = new Date();
+      await this.tgBot.telegram.sendMessage(
+        userId,
+        'Thank you for your answers!\n\nPlease reach out to @DriadaRoids to get the results.',
+      );
+      const responseHeader = `${date}\nПользователь ${userInfo} заполнил опрос:\n\n`;
+      const responseBody = questionnaire.questions
+        .filter((q) => q.type !== 'picture' && q.response !== 'skipped')
+        .map((q) => `*${q.responseKey}:*\n${q.response}`)
+        .join('\n\n');
 
-    await this.tgBot.telegram.sendMessage(userId, responseHeader);
-    await this.tgBot.telegram.sendMessage(userId, responseBody, {
-      parse_mode: 'Markdown',
-    });
-    // TODO: delete cache after the report is sent
-    // send photo
+      await this.tgBot.telegram.sendMessage(this.adminId, responseHeader);
+      await this.tgBot.telegram.sendMessage(this.adminId, responseBody, {
+        parse_mode: 'Markdown',
+      });
+
+      // currently can handle only 1 picture per questionnaire
+      const responsePicture = questionnaire.questions.find((q) => q.type === 'picture');
+      const imageUrl = responsePicture.response.toString();
+      const response = await axios.get(imageUrl, {
+        responseType: 'arraybuffer',
+      });
+      await this.tgBot.telegram.sendPhoto(this.adminId, {
+        source: Buffer.from(response.data),
+      });
+      this.cacheManager.del(userId.toString());
+    } catch (error) {
+      this.logger.error('completeQuestionnaire', error);
+      await this.tgBot.telegram.sendMessage(this.adminId, 'Произошла ошибка при отправке отчета');
+    }
   }
 }
-
-//     await ctx.reply(
-//       'Please read the article where you can learn about 3 possible concepts of building a plan for the first cycle:',
-//       {
-//         parse_mode: 'Markdown',
-//         reply_markup: {
-//           inline_keyboard: this.inlineKeyboardService.getArticleLink(),
-//         },
-//       },
-//     );
 
 //   async processPhoto(ctx: TelegrafContext): Promise<void> {
 //     try {

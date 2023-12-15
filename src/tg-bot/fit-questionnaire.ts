@@ -116,7 +116,11 @@ export class FitQuestionnaire {
       ],
     },
     // * STEP 3 - VISUAL ASSESSMENT
-    // send picture of your current shape
+    {
+      text: 'Please, send a picture of your current shape',
+      responseKey: 'currentShape',
+      type: 'picture',
+    },
   ];
 
   userId: number; // Telegram user id

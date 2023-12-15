@@ -38,6 +38,13 @@ export class UtilsService {
       const dto = new OptionsInputDTO(input, options);
       return await this.getValidationResult<OptionsInputDTO>(dto);
     },
+
+    picture: async (input: string): Promise<ValidationResult> => {
+      if (input) {
+        return { isValid: false, errors: ['Please sent a picture'] };
+      }
+      return { isValid: true, errors: [] };
+    },
   };
 
   async getValidationResult<T extends object>(dto: T): Promise<ValidationResult> {
