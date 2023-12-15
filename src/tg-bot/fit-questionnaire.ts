@@ -29,47 +29,47 @@ export class FitQuestionnaire {
     // * STEP 1 - GENERAL DATA
     {
       text: 'Please enter your email',
-      responseKey: 'email',
+      responseKey: 'Email',
       placeholder: 'E.g.: me@domain.com',
       type: 'email',
     },
     {
       text: 'Please enter your height in cm',
-      responseKey: 'height',
+      responseKey: 'Height',
       placeholder: 'E.g.: 175',
       type: 'number',
     },
     {
       text: 'Please enter your weight in kg',
-      responseKey: 'weight',
+      responseKey: 'Weight',
       placeholder: 'E.g.: 83',
       type: 'number',
     },
     {
       text: 'Please enter your age',
-      responseKey: 'age',
+      responseKey: 'Age',
       placeholder: 'E.g.: 25',
       type: 'number',
     },
     {
       text: 'What is your workout experience in years',
-      responseKey: 'workoutExperience',
+      responseKey: 'Workout Experience',
       placeholder: 'E.g.: 3',
       type: 'number',
     },
-    { text: 'Do you have any health chronic diseases?', type: 'boolean', responseKey: 'hasChronicDiseases' },
+    { text: 'Do you have any health chronic diseases?', type: 'boolean', responseKey: 'Has Chronic Diseases' },
     {
-      skipIf: { hasChronicDiseases: false },
+      skipIf: { 'Has Chronic Diseases': false },
       text: 'What kind of health chronic diseases?',
       type: 'string',
-      responseKey: 'chronicDiseases',
+      responseKey: 'Chronic Diseases',
     },
     // * STEP 2 - PREVIOUS EXPERIENCE
-    { text: 'Is this your first cycle?', type: 'boolean', responseKey: 'isFirstCycle' },
+    { text: 'Is this your first cycle?', type: 'boolean', responseKey: 'Is First Cycle' },
     {
-      skipIf: { isFirstCycle: false },
+      skipIf: { 'Is First Cycle': false },
       text: 'Choose concept:',
-      responseKey: 'concept',
+      responseKey: 'Concept',
       type: 'options',
       options: [
         { label: 'Concept of minimalism', value: 'minimalism' },
@@ -85,28 +85,28 @@ export class FitQuestionnaire {
       },
     },
     {
-      skipIf: { isFirstCycle: true },
+      skipIf: { 'Is First Cycle': true },
       text: 'How long was your previous cycle?',
       type: 'string',
-      responseKey: 'previousCycleDuration',
+      responseKey: 'Previous Cycle Duration',
     },
     {
-      skipIf: { isFirstCycle: true },
+      skipIf: { 'Is First Cycle': true },
       text: 'What drugs and in what doses did you use?',
       type: 'string',
-      responseKey: 'previousCycleDrugs',
+      responseKey: 'Previous Cycle Drugs',
     },
     {
-      skipIf: { isFirstCycle: true },
+      skipIf: { 'Is First Cycle': true },
       text: 'Describe your results from the previous cycle',
       type: 'string',
-      responseKey: 'previousCycleResults',
+      responseKey: 'Previous Cycle Results',
     },
     {
-      skipIf: { isFirstCycle: true },
+      skipIf: { 'Is First Cycle': true },
       text: 'Choose your goal:',
       type: 'options',
-      responseKey: 'goal',
+      responseKey: 'Goal',
       options: [
         { label: 'Bulk', value: 'bulk' },
         { label: 'Clean Bulk', value: 'clean bulk' },
@@ -118,7 +118,7 @@ export class FitQuestionnaire {
     // * STEP 3 - VISUAL ASSESSMENT
     {
       text: 'Please, send a picture of your current shape',
-      responseKey: 'currentShape',
+      responseKey: 'Current Shape',
       type: 'picture',
     },
   ];
