@@ -29,7 +29,7 @@ export class TgBotService {
 
   async help(ctx: TelegrafContext): Promise<void> {
     await ctx.reply(
-      'We will create an effective cycle based on your goals.\n\nPlease use /start command to begin.\n\nPlease use /restart command to start from the beginning.\n\nIf you have any questions, please contact @DriadaRoids',
+      'We will create an effective cycle based on your goals.\n\nPlease use /start command to begin.\n\nPlease use /restart command to start from the beginning.\n\nIf you made a mistake you can use /edit_last_reply command to fix it.\n\nIf you have any questions, please contact @DriadaRoids',
     );
   }
 
@@ -211,8 +211,8 @@ export class TgBotService {
       const questionnaireData = await this.cacheGet(ctx);
 
       if (!questionnaireData) {
-        ctx.reply('Sorry for the inconvenience, we need to restart your session.');
-        this.restart(ctx);
+        await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        await this.restart(ctx);
         return;
       }
 
@@ -237,8 +237,8 @@ export class TgBotService {
       const questionnaireData = await this.cacheGet(ctx);
 
       if (!questionnaireData) {
-        ctx.reply('Sorry for the inconvenience, we need to restart your session.');
-        this.restart(ctx);
+        await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        await this.restart(ctx);
         return;
       }
 
@@ -256,8 +256,8 @@ export class TgBotService {
       const questionnaireData = await this.cacheGet(ctx);
 
       if (!questionnaireData) {
-        ctx.reply('Sorry for the inconvenience, we need to restart your session.');
-        this.restart(ctx);
+        await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        await this.restart(ctx);
         return;
       }
 
@@ -314,6 +314,24 @@ export class TgBotService {
     }
   }
 
+  async editLastReply(ctx: TelegrafContext): Promise<void> {
+    const questionnaireData = await this.cacheGet(ctx);
+    if (!questionnaireData) {
+      await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+      await this.restart(ctx);
+      return;
+    }
+
+    if (questionnaireData.currentQuestionIndex === 0) {
+      await ctx.reply('Sorry, you cannot edit the first answer');
+      return;
+    }
+
+    questionnaireData.currentQuestionIndex -= 1;
+    await this.cacheSet(ctx, questionnaireData);
+    await this.showQuestion(ctx, questionnaireData);
+  }
+
   async completeQuestionnaire(questionnaire: FitQuestionnaire): Promise<void> {
     try {
       const { userId, userInfo } = questionnaire;
@@ -349,113 +367,3 @@ export class TgBotService {
     }
   }
 }
-
-//   async processPhoto(ctx: TelegrafContext): Promise<void> {
-//     try {
-//       const currentUpdate = ctx.update;
-//       if (!('message' in currentUpdate)) throw new Error('No message');
-//       if (!('photo' in currentUpdate.message)) throw new Error('No photo');
-//       const userId = currentUpdate.message.from.id;
-
-//       const { file_id } = currentUpdate.message.photo.at(-1);
-//       const fileLink = await ctx.telegram.getFileLink(file_id);
-
-//       const response = await axios.get(fileLink.toString(), {
-//         responseType: 'arraybuffer',
-//       });
-//       // const fileName = `${this.utilsService.getCurrentUTCDateTime()}-${userId}.jpg`;
-
-//       await fs.writeFile(fileName, response.data);
-
-//       await this.sendPhotoToAdmin(ctx, file_id);
-//     } catch (error) {
-//       this.logger.log(`${ctx.update.update_id} ${error}`);
-//     }
-//   }
-// }
-
-//   async sendPhotoToAdmin(ctx: TelegrafContext, fileId: string): Promise<void> {
-//     try {
-//       const fileLink = await ctx.telegram.getFileLink(fileId);
-//       const response = await axios.get(fileLink.toString(), {
-//         responseType: 'arraybuffer',
-//       });
-//       await ctx.telegram.sendPhoto(this.adminId, {
-//         source: Buffer.from(response.data),
-//       });
-//     } catch (error) {
-//       this.logger.log(`sendPhotoToAdmin: ${ctx.update.update_id} ${error}`);
-//     }
-//   }
-
-// await this.tgBot.telegram.sendMessage(userId, `${date}\nПользователь ${userInfo} заполнил опрос:`);
-
-// async test(ctx: TelegrafContext): Promise<void> {
-//   if (!('message' in ctx.update)) throw new Error('No message');
-//   if (!('text' in ctx.update.message)) throw new Error('No text');
-//   const res = await this.inputUtilsService.validate['number'](
-//     ctx.update.message.text,
-//   );
-
-//   console.log('input', ctx.update.message.text, 'res', res);
-
-//   await ctx.reply(`You wrote: ${ctx.update.message.text}`, {
-//     reply_markup: {
-//       force_reply: true,
-//       input_field_placeholder: 'Enter your age',
-//     },
-//   });
-// }
-
-// async sendCallback(ctx: TelegrafContext): Promise<void> {
-//   await ctx.reply('Choose your goal:', {
-//     reply_markup: {
-//       inline_keyboard: this.inlineKeyboardService.getGoalSelector(),
-//       force_reply: true,
-//       input_field_placeholder: '',
-//     },
-//   });
-// }
-
-// async testCallback(ctx: TelegrafContext): Promise<void> {
-//   if (!('data' in ctx.callbackQuery))
-//     throw new Error('No data in the callback');
-//   // const fakeOptions = ['asdf', 'qwer', 'zxcv'];
-//   const options = this.inlineKeyboardService.getGoalSelector().map((row) => {
-//     const [option] = row;
-//     return option['callback_data'];
-//   });
-//   console.log('options', options);
-//   const { data } = ctx.callbackQuery;
-//   const res = await this.inputUtilsService.validate['options'](data, options);
-//   console.log('input', data, 'res', res);
-// }
-
-// async start2(ctx: TelegrafContext): Promise<void> {
-//   const currentUpdate = ctx.update;
-//   if (!('message' in currentUpdate)) throw new Error('No message');
-//   const userId = currentUpdate.message.from.id;
-//   const userKey = userId.toString();
-//   const previousData = await this.cacheManager.get<string>(userKey);
-//   if (previousData) {
-//     await ctx.reply(`Ok, let's continue!`);
-//     // await this.showQuestion(ctx);
-//     return;
-//   }
-//   const newUserQuestionnaire = new FitQuestionnaire(userId);
-
-//   await ctx.reply(`Great, let's start!`);
-//   // await this.showQuestion(ctx);
-//   await this.cacheManager.set(userKey, JSON.stringify(newUserQuestionnaire));
-
-//   // const questionnaireData = JSON.parse(previousData) as FitQuestionnaire;
-//   // const { currentQuestionIndex } = questionnaireData;
-
-//   // const [questionText, placeholder] = newUserQuestionnaire.getQuestionData();
-//   // await ctx.reply(questionText, {
-//   //   reply_markup: {
-//   //     force_reply: true,
-//   //     input_field_placeholder: placeholder ?? '',
-//   //   },
-//   // });
-// }
