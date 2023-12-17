@@ -6,6 +6,7 @@ import { TgBotUppdate } from './tg-bot.update';
 import { TgBotService } from './tg-bot.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
 import { UtilsService } from './utils.service';
+import { TgBotMiddleware } from './tg-bot.middleware';
 
 @Module({
   imports: [
@@ -15,7 +16,7 @@ import { UtilsService } from './utils.service';
       botName: 'tg-bot',
       useFactory: async (configService: ConfigService) => {
         const token = configService.get<string>('TG_BOT_TOKEN');
-        return { token };
+        return { token, middlewares: [TgBotMiddleware] };
       },
     }),
     ConfigModule,
