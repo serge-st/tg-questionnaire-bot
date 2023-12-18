@@ -6,6 +6,7 @@ import { TgBotUppdate } from './tg-bot.update';
 import { TgBotService } from './tg-bot.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
 import { UtilsService } from './utils.service';
+import { CacheService } from './cache.service';
 import { AddUserInfoToContextMiddleware } from './middlewares';
 
 @Module({
@@ -24,6 +25,6 @@ import { AddUserInfoToContextMiddleware } from './middlewares';
       ttl: 60 * 60 * 1000, // = 1h, time in milliseconds
     }),
   ],
-  providers: [TgBotUppdate, TgBotService, InlineKeyboardService, UtilsService],
+  providers: [TgBotUppdate, TgBotService, InlineKeyboardService, UtilsService, CacheService],
 })
 export class TgBotModule {}

@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
 import { validate as cvValidate } from 'class-validator';
-import { StringInputDTO, NumberInputDTO, EmailInputDTO, BooleanInputDTO } from './dto';
-import { OptionsInputDTO } from './dto/options-input.dto';
-import { FitQuestionnaire, AnswerData } from './fit-questionnaire';
+import { AnswerData } from 'tg-bot/types';
+import { StringInputDTO, NumberInputDTO, EmailInputDTO, BooleanInputDTO, OptionsInputDTO } from 'tg-bot/dto';
+import { FitQuestionnaire } from './fit-questionnaire';
 
 export type InputDataType = keyof UtilsService['validate'];
 export type ValidationResult = {

@@ -6,8 +6,9 @@ import { InjectBot } from 'nestjs-telegraf';
 import { User as TgUser } from 'telegraf/typings/core/types/typegram';
 import { Context, Telegraf } from 'telegraf';
 import axios from 'axios';
-import { TelegrafContext } from './types';
+import { TelegrafContext, TelegrafContextWithUser } from './types';
 import { FitQuestionnaire } from './fit-questionnaire';
+import { CacheService } from './cache.service';
 import { UtilsService, ValidationResult } from './utils.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
 
@@ -20,6 +21,7 @@ export class TgBotService {
   constructor(
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     @InjectBot('tg-bot') private tgBot: Telegraf<Context>,
+    private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
     private readonly utilsService: UtilsService,
     private readonly inlineKeyboardService: InlineKeyboardService,
@@ -33,9 +35,9 @@ export class TgBotService {
     );
   }
 
-  async start(ctx: TelegrafContext): Promise<void> {
+  async start(ctx: TelegrafContextWithUser): Promise<void> {
     try {
-      const cachedData = await this.cacheGet(ctx);
+      const cachedData = await this.cacheService.get(ctx.user.id);
       const questionnaireData = cachedData ? cachedData : this.startNewSession(ctx);
       const { currentQuestionIndex } = questionnaireData;
       if (currentQuestionIndex === 0) {
@@ -43,7 +45,7 @@ export class TgBotService {
       } else {
         await ctx.reply(`Ok, let's continue!`);
       }
-      await this.cacheSet(ctx, questionnaireData);
+      await this.cacheService.set(ctx.user.id, questionnaireData);
       await this.showQuestion(ctx, questionnaireData);
     } catch (error) {
       this.logger.error('start', error);

@@ -1,12 +1,5 @@
 import { MiddlewareFn } from 'telegraf';
-import { User } from 'telegraf/typings/core/types/typegram';
-import { TelegrafContext } from '../types';
-
-interface TgUser extends User {
-  userInfo?: string; // TG username or first_name
-}
-
-export type TelegrafContextWithUser = TelegrafContext & { user: TgUser };
+import { TelegrafContext, TelegrafContextWithUser } from 'tg-bot/types';
 
 export const AddUserInfoToContextMiddleware: MiddlewareFn<TelegrafContext> = (
   ctx: TelegrafContextWithUser,
