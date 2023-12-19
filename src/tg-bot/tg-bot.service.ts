@@ -6,9 +6,10 @@ import { Context, Telegraf } from 'telegraf';
 import axios from 'axios';
 import { TelegrafContext, TelegrafContextWithUser } from './types';
 import { CacheService } from './cache.service';
-import { UtilsService, ValidationResult } from './utils.service';
+import { ValidationService, ValidationResult } from './validation.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
 import { Questionnaire } from './questionnaire';
+import { QuestionnaireService } from './questionnaire.service';
 
 @Injectable()
 export class TgBotService {
@@ -20,8 +21,9 @@ export class TgBotService {
     @InjectBot('tg-bot') private tgBot: Telegraf<Context>,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
-    private readonly utilsService: UtilsService,
+    private readonly validationService: ValidationService,
     private readonly inlineKeyboardService: InlineKeyboardService,
+    private readonly questionnaireService: QuestionnaireService,
   ) {
     this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
   }
@@ -35,7 +37,7 @@ export class TgBotService {
   async start(ctx: TelegrafContextWithUser): Promise<void> {
     try {
       const cachedData = await this.cacheService.get(ctx.user.id);
-      const questionnaireData = cachedData ? cachedData : await this.utilsService.startNewSession(ctx);
+      const questionnaireData = cachedData ? cachedData : this.questionnaireService.startNewSession(ctx);
       const { currentQuestionIndex } = questionnaireData;
       if (currentQuestionIndex === 0) {
         await ctx.reply(`Great, let's start!`);
@@ -53,7 +55,7 @@ export class TgBotService {
   async restart(ctx: TelegrafContextWithUser): Promise<void> {
     try {
       const cachedData = await this.cacheService.get(ctx.user.id);
-      const questionnaireData = cachedData ? cachedData : await this.utilsService.startNewSession(ctx);
+      const questionnaireData = cachedData ? cachedData : this.questionnaireService.startNewSession(ctx);
       questionnaireData.currentQuestionIndex = 0;
       await ctx.reply(`Ok, let's start from the beginning!`);
       await this.cacheService.set(ctx.user.id, questionnaireData);
@@ -85,13 +87,6 @@ export class TgBotService {
     const updateFrom = this.getUpdateFrom(ctx);
     return updateFrom.username ? '@' + updateFrom.username : updateFrom.first_name ? updateFrom.first_name : null;
   }
-
-  // startNewSession(ctx: TelegrafContext): FitQuestionnaire {
-  //   const { userId } = this.getUserId(ctx);
-  //   const userInfo = this.getUserInfo(ctx);
-  //   const questionnaireData = new FitQuestionnaire(userId, userInfo);
-  //   return questionnaireData;
-  // }
 
   async processPreMessage(ctx: TelegrafContext, questionnaireData: Questionnaire): Promise<void> {
     const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
@@ -128,7 +123,7 @@ export class TgBotService {
       const shouldSkip = await this.shouldSkip(ctx, questionnaireData);
       if (shouldSkip) return;
       await this.processPreMessage(ctx, questionnaireData);
-      const [type, text, placeholder] = this.utilsService.getQuestionData(questionnaireData);
+      const [type, text, placeholder] = this.questionnaireService.getQuestionData(questionnaireData);
 
       switch (type) {
         case 'boolean':
@@ -179,8 +174,8 @@ export class TgBotService {
   }
 
   async processResponse(text: string, questionnaireData: Questionnaire, ctx: TelegrafContextWithUser): Promise<void> {
-    this.utilsService.addResponse(text, questionnaireData);
-    if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
+    this.questionnaireService.addResponse(text, questionnaireData);
+    if (this.questionnaireService.isQuestionnaireComplete(questionnaireData)) {
       await this.completeQuestionnaire(questionnaireData);
       return;
     }
@@ -203,10 +198,10 @@ export class TgBotService {
       }
 
       const { text } = currentUpdate.message;
-      const [type] = this.utilsService.getQuestionData(questionnaireData);
+      const [type] = this.questionnaireService.getQuestionData(questionnaireData);
 
       if (type === 'options' || type === 'boolean') return this.checkOptionsAnswer(ctx);
-      const { isValid, errors } = await this.utilsService.validate[type](text);
+      const { isValid, errors } = await this.validationService.validate[type](text);
       if (!isValid) return await this.invalidAnswer(ctx, errors);
 
       this.processResponse(text, questionnaireData, ctx);
@@ -247,7 +242,7 @@ export class TgBotService {
         return;
       }
 
-      const [type, questionText] = this.utilsService.getQuestionData(questionnaireData);
+      const [type, questionText] = this.questionnaireService.getQuestionData(questionnaireData);
 
       // Validate in case if answer provided as text and not via inline keyboard
       if ('message' in ctx.update && 'text' in ctx.update.message) {
@@ -255,7 +250,7 @@ export class TgBotService {
 
         switch (type) {
           case 'boolean': {
-            const { isValid, errors } = await this.utilsService.validate[type](text);
+            const { isValid, errors } = await this.validationService.validate[type](text);
             if (!isValid) {
               await this.invalidAnswer(ctx, errors);
               await this.showBooleanQuestion(ctx, questionText);
@@ -268,7 +263,7 @@ export class TgBotService {
           case 'options': {
             const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
             const optionStrings = question.options.map((option) => option.value.toString());
-            const { isValid, errors } = await this.utilsService.validate[type](text, optionStrings);
+            const { isValid, errors } = await this.validationService.validate[type](text, optionStrings);
             if (!isValid) {
               await this.invalidAnswer(ctx, errors);
               await this.showOptionsQuestion(ctx, questionnaireData);

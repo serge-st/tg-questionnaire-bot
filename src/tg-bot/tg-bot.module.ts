@@ -5,9 +5,10 @@ import { CacheModule } from '@nestjs/cache-manager';
 import { TgBotUppdate } from './tg-bot.update';
 import { TgBotService } from './tg-bot.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
-import { UtilsService } from './utils.service';
+import { ValidationService } from './validation.service';
 import { CacheService } from './cache.service';
 import { AddUserInfoToContextMiddleware } from './middlewares';
+import { QuestionnaireService } from './questionnaire.service';
 
 @Module({
   imports: [
@@ -25,6 +26,6 @@ import { AddUserInfoToContextMiddleware } from './middlewares';
       ttl: 60 * 60 * 1000, // = 1h, time in milliseconds
     }),
   ],
-  providers: [TgBotUppdate, TgBotService, InlineKeyboardService, UtilsService, CacheService],
+  providers: [TgBotUppdate, TgBotService, InlineKeyboardService, ValidationService, QuestionnaireService, CacheService],
 })
 export class TgBotModule {}

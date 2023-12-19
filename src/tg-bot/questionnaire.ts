@@ -1,4 +1,4 @@
-import { InputDataType } from './utils.service';
+import { InputDataType } from './validation.service';
 
 export type Question = {
   text: string;
