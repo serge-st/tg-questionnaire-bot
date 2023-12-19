@@ -1,4 +1,4 @@
-import { InputDataType } from '../utils.service';
+import { InputDataType } from './utils.service';
 
 export type Question = {
   text: string;
@@ -24,10 +24,16 @@ export type Option = {
 
 export type AnswerData = number | string | boolean | 'skipped';
 
-export type QuestionnaireData = {
+export class Questionnaire {
   questions: Question[];
   userId: number; // Telegram user id
-  userInfo: string | null;
-  currentQuestionIndex: number;
+  userInfo: string; // TG username or first_name + ?last_name
+  currentQuestionIndex = 0;
   submittionTime: Date;
-};
+
+  constructor(questions: Question[], userId: number, userInfo: string | null = null) {
+    this.questions = questions;
+    this.userId = userId;
+    this.userInfo = userInfo;
+  }
+}

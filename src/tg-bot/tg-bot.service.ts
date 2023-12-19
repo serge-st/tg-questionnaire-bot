@@ -5,10 +5,10 @@ import { User as TgUser } from 'telegraf/typings/core/types/typegram';
 import { Context, Telegraf } from 'telegraf';
 import axios from 'axios';
 import { TelegrafContext, TelegrafContextWithUser } from './types';
-import { FitQuestionnaire } from './fit-questionnaire';
 import { CacheService } from './cache.service';
 import { UtilsService, ValidationResult } from './utils.service';
 import { InlineKeyboardService } from './inline-keyboard.service';
+import { Questionnaire } from './questionnaire';
 
 @Injectable()
 export class TgBotService {
@@ -35,7 +35,7 @@ export class TgBotService {
   async start(ctx: TelegrafContextWithUser): Promise<void> {
     try {
       const cachedData = await this.cacheService.get(ctx.user.id);
-      const questionnaireData = cachedData ? cachedData : this.startNewSession(ctx);
+      const questionnaireData = cachedData ? cachedData : await this.utilsService.startNewSession(ctx);
       const { currentQuestionIndex } = questionnaireData;
       if (currentQuestionIndex === 0) {
         await ctx.reply(`Great, let's start!`);
@@ -53,7 +53,7 @@ export class TgBotService {
   async restart(ctx: TelegrafContextWithUser): Promise<void> {
     try {
       const cachedData = await this.cacheService.get(ctx.user.id);
-      const questionnaireData = cachedData ? cachedData : this.startNewSession(ctx);
+      const questionnaireData = cachedData ? cachedData : await this.utilsService.startNewSession(ctx);
       questionnaireData.currentQuestionIndex = 0;
       await ctx.reply(`Ok, let's start from the beginning!`);
       await this.cacheService.set(ctx.user.id, questionnaireData);
@@ -86,14 +86,14 @@ export class TgBotService {
     return updateFrom.username ? '@' + updateFrom.username : updateFrom.first_name ? updateFrom.first_name : null;
   }
 
-  startNewSession(ctx: TelegrafContext): FitQuestionnaire {
-    const { userId } = this.getUserId(ctx);
-    const userInfo = this.getUserInfo(ctx);
-    const questionnaireData = new FitQuestionnaire(userId, userInfo);
-    return questionnaireData;
-  }
+  // startNewSession(ctx: TelegrafContext): FitQuestionnaire {
+  //   const { userId } = this.getUserId(ctx);
+  //   const userInfo = this.getUserInfo(ctx);
+  //   const questionnaireData = new FitQuestionnaire(userId, userInfo);
+  //   return questionnaireData;
+  // }
 
-  async processPreMessage(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
+  async processPreMessage(ctx: TelegrafContext, questionnaireData: Questionnaire): Promise<void> {
     const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
     const { preMessage } = question;
     if (!preMessage) return;
@@ -110,7 +110,7 @@ export class TgBotService {
     }
   }
 
-  async shouldSkip(ctx: TelegrafContextWithUser, questionnaireData: FitQuestionnaire): Promise<boolean> {
+  async shouldSkip(ctx: TelegrafContextWithUser, questionnaireData: Questionnaire): Promise<boolean> {
     const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
     const { skipIf } = question;
     if (!skipIf) return false;
@@ -123,7 +123,7 @@ export class TgBotService {
     return true;
   }
 
-  async showQuestion(ctx: TelegrafContextWithUser, questionnaireData: FitQuestionnaire): Promise<void> {
+  async showQuestion(ctx: TelegrafContextWithUser, questionnaireData: Questionnaire): Promise<void> {
     try {
       const shouldSkip = await this.shouldSkip(ctx, questionnaireData);
       if (shouldSkip) return;
@@ -166,7 +166,7 @@ export class TgBotService {
     });
   }
 
-  async showOptionsQuestion(ctx: TelegrafContext, questionnaireData: FitQuestionnaire): Promise<void> {
+  async showOptionsQuestion(ctx: TelegrafContext, questionnaireData: Questionnaire): Promise<void> {
     const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
     const { text, options } = question;
     await ctx.reply(text, {
@@ -178,11 +178,7 @@ export class TgBotService {
     });
   }
 
-  async processResponse(
-    text: string,
-    questionnaireData: FitQuestionnaire,
-    ctx: TelegrafContextWithUser,
-  ): Promise<void> {
+  async processResponse(text: string, questionnaireData: Questionnaire, ctx: TelegrafContextWithUser): Promise<void> {
     this.utilsService.addResponse(text, questionnaireData);
     if (this.utilsService.isQuestionnaireComplete(questionnaireData)) {
       await this.completeQuestionnaire(questionnaireData);
@@ -313,7 +309,7 @@ export class TgBotService {
     }
 
     if (questionnaireData.currentQuestionIndex === 0) {
-      await ctx.reply('Sorry, you cannot edit the first answer');
+      await ctx.reply('This is the first question');
       return;
     }
 
@@ -322,7 +318,7 @@ export class TgBotService {
     await this.showQuestion(ctx, questionnaireData);
   }
 
-  async completeQuestionnaire(questionnaire: FitQuestionnaire): Promise<void> {
+  async completeQuestionnaire(questionnaire: Questionnaire): Promise<void> {
     try {
       const { userId, userInfo } = questionnaire;
       const date = new Date();

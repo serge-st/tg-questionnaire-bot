@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InlineKeyboardButton } from 'telegraf/typings/core/types/typegram';
-import { Option } from 'tg-bot/types';
+import { Option } from './questionnaire';
 
 @Injectable()
 export class InlineKeyboardService {

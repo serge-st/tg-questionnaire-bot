@@ -1,8 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { validate as cvValidate } from 'class-validator';
-import { AnswerData } from 'tg-bot/types';
+import { TelegrafContextWithUser } from 'tg-bot/types';
 import { StringInputDTO, NumberInputDTO, EmailInputDTO, BooleanInputDTO, OptionsInputDTO } from 'tg-bot/dto';
-import { FitQuestionnaire } from './fit-questionnaire';
+import { Questionnaire, AnswerData, Question } from './questionnaire';
+import questionsRaw from '../../questions.json';
 
 export type InputDataType = keyof UtilsService['validate'];
 export type ValidationResult = {
@@ -59,21 +60,27 @@ export class UtilsService {
     return input.replaceAll(' ', '').replace(',', '.');
   };
 
-  getQuestionData(questionnaire: FitQuestionnaire): [InputDataType, string, string | undefined] {
+  getQuestionData(questionnaire: Questionnaire): [InputDataType, string, string | undefined] {
     const question = questionnaire.questions[questionnaire.currentQuestionIndex];
     const { text, placeholder, type } = question;
     return [type, text, placeholder];
   }
 
-  addResponse(response: AnswerData, questionnaire: FitQuestionnaire): void {
+  addResponse(response: AnswerData, questionnaire: Questionnaire): void {
     questionnaire.questions[questionnaire.currentQuestionIndex].response = response;
     questionnaire.currentQuestionIndex += 1;
   }
 
-  isQuestionnaireComplete(questionnaire: FitQuestionnaire): boolean {
+  isQuestionnaireComplete(questionnaire: Questionnaire): boolean {
     return questionnaire.currentQuestionIndex === questionnaire.questions.length;
   }
 
+  async startNewSession(ctx: TelegrafContextWithUser): Promise<Questionnaire> {
+    const questions = questionsRaw as Question[];
+    const { id: userId, userInfo } = ctx.user;
+    const questionnaireData = new Questionnaire(questions, userId, userInfo);
+    return questionnaireData;
+  }
   // TODO: add check if message function to check for:
   // context ('message' in currentUpdate).
 }
