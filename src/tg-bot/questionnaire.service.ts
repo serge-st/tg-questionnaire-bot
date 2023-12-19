@@ -27,4 +27,16 @@ export class QuestionnaireService {
     const questionnaireData = new Questionnaire(questions, userId, userInfo);
     return questionnaireData;
   }
+
+  shouldSkip(questionnaireData: Questionnaire): boolean {
+    const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
+    const { skipIf } = question;
+    if (!skipIf) return false;
+    const [entries] = Object.entries(skipIf);
+    const [key, value] = entries;
+    const { questions } = questionnaireData;
+    const result = questions.find((q) => q.responseKey === key && q.response === String(value));
+    if (!result) return false;
+    return true;
+  }
 }

@@ -105,23 +105,13 @@ export class TgBotService {
     }
   }
 
-  async shouldSkip(ctx: TelegrafContextWithUser, questionnaireData: Questionnaire): Promise<boolean> {
-    const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
-    const { skipIf } = question;
-    if (!skipIf) return false;
-    const [entries] = Object.entries(skipIf);
-    const [key, value] = entries;
-    const { questions } = questionnaireData;
-    const result = questions.find((q) => q.responseKey === key && q.response === String(value));
-    if (!result) return false;
-    this.processResponse('skipped', questionnaireData, ctx);
-    return true;
-  }
-
   async showQuestion(ctx: TelegrafContextWithUser, questionnaireData: Questionnaire): Promise<void> {
     try {
-      const shouldSkip = await this.shouldSkip(ctx, questionnaireData);
-      if (shouldSkip) return;
+      const shouldSkip = this.questionnaireService.shouldSkip(questionnaireData);
+      if (shouldSkip) {
+        await this.processResponse('skipped', questionnaireData, ctx);
+        return;
+      }
       await this.processPreMessage(ctx, questionnaireData);
       const [type, text, placeholder] = this.questionnaireService.getQuestionData(questionnaireData);
 
@@ -313,6 +303,7 @@ export class TgBotService {
     await this.showQuestion(ctx, questionnaireData);
   }
 
+  // TODO: refactor, probably move to questionnaire service
   async completeQuestionnaire(questionnaire: Questionnaire): Promise<void> {
     try {
       const { userId, userInfo } = questionnaire;
