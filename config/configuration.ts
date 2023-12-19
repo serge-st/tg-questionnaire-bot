@@ -1,3 +1,6 @@
+import { messages } from './tg-bot-messages';
+import { questions } from './tg-bot-questions';
+
 export default () => ({
   port: parseInt(process.env.APP_PORT) || 3000,
   database: {
@@ -8,4 +11,8 @@ export default () => ({
     database: process.env.POSTGRES_DATABASE,
   },
   mode: process.env.APP_MODE || 'production',
+  'tg-bot': {
+    messages,
+    questions,
+  },
 });
