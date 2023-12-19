@@ -1,7 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
-import { User as TgUser } from 'telegraf/typings/core/types/typegram';
 import { Context, Telegraf } from 'telegraf';
 import axios from 'axios';
 import { TelegrafContext, TelegrafContextWithUser } from './types';
@@ -66,26 +65,22 @@ export class TgBotService {
     }
   }
 
-  getUserId(ctx: TelegrafContext): { userKey: string; userId: number } {
-    const updateFrom = this.getUpdateFrom(ctx);
-    const userId = updateFrom.id;
-    const userKey = userId.toString();
-    return { userKey, userId };
-  }
-
-  getUpdateFrom(ctx: TelegrafContext): TgUser {
-    if ('message' in ctx.update) {
-      return ctx.update.message.from;
-    } else if ('callback_query' in ctx.update) {
-      return ctx.update.callback_query.from;
-    } else {
-      throw new Error('No message or callback_query');
+  async editLastReply(ctx: TelegrafContextWithUser): Promise<void> {
+    const questionnaireData = await this.cacheService.get(ctx.user.id);
+    if (!questionnaireData) {
+      await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+      await this.restart(ctx);
+      return;
     }
-  }
 
-  getUserInfo(ctx: TelegrafContext): string | null {
-    const updateFrom = this.getUpdateFrom(ctx);
-    return updateFrom.username ? '@' + updateFrom.username : updateFrom.first_name ? updateFrom.first_name : null;
+    if (questionnaireData.currentQuestionIndex === 0) {
+      await ctx.reply('This is the first question');
+      return;
+    }
+
+    questionnaireData.currentQuestionIndex -= 1;
+    await this.cacheService.set(ctx.user.id, questionnaireData);
+    await this.showQuestion(ctx, questionnaireData);
   }
 
   async processPreMessage(ctx: TelegrafContext, questionnaireData: Questionnaire): Promise<void> {
@@ -283,24 +278,6 @@ export class TgBotService {
     for (const error of errors) {
       await ctx.reply(error);
     }
-  }
-
-  async editLastReply(ctx: TelegrafContextWithUser): Promise<void> {
-    const questionnaireData = await this.cacheService.get(ctx.user.id);
-    if (!questionnaireData) {
-      await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
-      await this.restart(ctx);
-      return;
-    }
-
-    if (questionnaireData.currentQuestionIndex === 0) {
-      await ctx.reply('This is the first question');
-      return;
-    }
-
-    questionnaireData.currentQuestionIndex -= 1;
-    await this.cacheService.set(ctx.user.id, questionnaireData);
-    await this.showQuestion(ctx, questionnaireData);
   }
 
   // TODO: refactor, probably move to questionnaire service
