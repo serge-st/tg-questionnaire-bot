@@ -2,7 +2,6 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
 import { Context, Telegraf } from 'telegraf';
-import axios from 'axios';
 import { TelegrafContext, TelegrafContextWithUser } from './types';
 import { CacheService } from './cache.service';
 import { ValidationService, ValidationResult } from './validation.service';
@@ -165,7 +164,7 @@ export class TgBotService {
   async processResponse(text: string, questionnaireData: Questionnaire, ctx: TelegrafContextWithUser): Promise<void> {
     this.questionnaireService.addResponse(text, questionnaireData);
     if (this.questionnaireService.isQuestionnaireComplete(questionnaireData)) {
-      await this.completeQuestionnaire(questionnaireData);
+      await this.sendCompletionMessages(questionnaireData);
       return;
     }
     await this.cacheService.set(ctx.user.id, questionnaireData);
@@ -284,34 +283,22 @@ export class TgBotService {
     }
   }
 
-  // TODO: refactor, probably move to questionnaire service
-  async completeQuestionnaire(questionnaire: Questionnaire): Promise<void> {
+  async sendCompletionMessages(questionnaire: Questionnaire): Promise<void> {
     try {
-      const { userId, userInfo } = questionnaire;
+      const { userId } = questionnaire;
       await this.tgBot.telegram.sendMessage(userId, this.configService.get('tg-bot.messages.userSurveycomplete'));
 
-      const date = new Date();
-      const adminSurveyCompleteText = this.configService.get('tg-bot.messages.adminSurveycomplete');
-      const responseHeader = `${date}\n${adminSurveyCompleteText}\n${userInfo}\n\n`;
-      const responseBody = questionnaire.questions
-        .filter((q) => q.type !== 'picture' && q.response !== 'skipped')
-        .map((q) => `*${q.responseKey}:*\n${q.response}`)
-        .join('\n\n');
+      const [responseHeader, responseBody, responseData] =
+        await this.questionnaireService.getQuestionnareCompletionReport(questionnaire);
 
       await this.tgBot.telegram.sendMessage(this.adminId, responseHeader);
       await this.tgBot.telegram.sendMessage(this.adminId, responseBody, {
         parse_mode: 'Markdown',
       });
-
-      // currently can handle only 1 picture per questionnaire
-      const responsePicture = questionnaire.questions.find((q) => q.type === 'picture');
-      const imageUrl = responsePicture.response.toString();
-      const response = await axios.get(imageUrl, {
-        responseType: 'arraybuffer',
-      });
       await this.tgBot.telegram.sendPhoto(this.adminId, {
-        source: Buffer.from(response.data),
+        source: Buffer.from(responseData),
       });
+
       this.cacheService.delete(userId);
     } catch (error) {
       this.logger.error('completeQuestionnaire', error);

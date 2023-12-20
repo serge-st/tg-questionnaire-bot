@@ -29,7 +29,6 @@ export class Questionnaire {
   userId: number; // Telegram user id
   userInfo: string; // TG username or first_name + ?last_name
   currentQuestionIndex = 0;
-  submittionTime: Date;
 
   constructor(questions: Question[], userId: number, userInfo: string | null = null) {
     this.questions = questions;

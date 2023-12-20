@@ -1,8 +1,11 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import axios from 'axios';
 import { TelegrafContextWithUser } from './types';
 import { Questionnaire, AnswerData, Question } from './questionnaire';
 import { InputDataType } from './validation.service';
+
+export type QuestionnaireCompletionReport = [string, string, ArrayBuffer];
 
 @Injectable()
 export class QuestionnaireService {
@@ -29,15 +32,37 @@ export class QuestionnaireService {
     return questionnaireData;
   }
 
-  shouldSkip(questionnaireData: Questionnaire): boolean {
-    const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
+  shouldSkip(questionnaire: Questionnaire): boolean {
+    const question = questionnaire.questions[questionnaire.currentQuestionIndex];
     const { skipIf } = question;
     if (!skipIf) return false;
     const [entries] = Object.entries(skipIf);
     const [key, value] = entries;
-    const { questions } = questionnaireData;
+    const { questions } = questionnaire;
     const result = questions.find((q) => q.responseKey === key && q.response === String(value));
     if (!result) return false;
     return true;
+  }
+
+  async getQuestionnareCompletionReport(questionnaire: Questionnaire): Promise<QuestionnaireCompletionReport> {
+    const { userInfo } = questionnaire;
+
+    const date = new Date();
+    const adminSurveyCompleteText = this.configService.get('tg-bot.messages.adminSurveycomplete');
+
+    const responseHeader = `${date}\n${adminSurveyCompleteText}\n${userInfo}\n\n`;
+    const responseBody = questionnaire.questions
+      .filter((q) => q.type !== 'picture' && q.response !== 'skipped')
+      .map((q) => `*${q.responseKey}:*\n${q.response}`)
+      .join('\n\n');
+
+    // currently can handle only 1 picture per questionnaire
+    const responsePicture = questionnaire.questions.find((q) => q.type === 'picture');
+    const imageUrl = responsePicture.response.toString();
+    const { data: responseData } = await axios.get<ArrayBuffer>(imageUrl, {
+      responseType: 'arraybuffer',
+    });
+
+    return [responseHeader, responseBody, responseData];
   }
 }
