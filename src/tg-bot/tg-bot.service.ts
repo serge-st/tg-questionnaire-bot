@@ -13,8 +13,8 @@ import { QuestionnaireService } from './questionnaire.service';
 @Injectable()
 export class TgBotService {
   private readonly logger = new Logger(TgBotService.name);
-  private readonly serviceErrorText: string =
-    'Something went wrong.\n\nPlease use /restart command to start from the beginning.\n\nIf the problem persists, please contact @DriadaRoids';
+  private readonly serviceErrorText: string;
+  private readonly sessionRestartRequiredText: string;
   private readonly adminId: number;
   constructor(
     @InjectBot('tg-bot') private tgBot: Telegraf<Context>,
@@ -24,13 +24,13 @@ export class TgBotService {
     private readonly inlineKeyboardService: InlineKeyboardService,
     private readonly questionnaireService: QuestionnaireService,
   ) {
+    this.serviceErrorText = this.configService.get('tg-bot.messages.serviceError');
+    this.sessionRestartRequiredText = this.configService.get('tg-bot.messages.sessionRestartRequired');
     this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
   }
 
   async help(ctx: TelegrafContext): Promise<void> {
-    await ctx.reply(
-      'We will create an effective cycle based on your goals.\n\nPlease use /start command to begin.\n\nPlease use /restart command to start from the beginning.\n\nIf you made a mistake you can use /edit_last_reply command to fix it.\n\nIf you have any questions, please contact @DriadaRoids',
-    );
+    await ctx.reply(this.configService.get('tg-bot.messages.help'));
   }
 
   async start(ctx: TelegrafContextWithUser): Promise<void> {
@@ -39,9 +39,11 @@ export class TgBotService {
       const questionnaireData = cachedData ? cachedData : this.questionnaireService.startNewSession(ctx);
       const { currentQuestionIndex } = questionnaireData;
       if (currentQuestionIndex === 0) {
-        await ctx.reply(`Great, let's start!`);
+        const startNewSessionText = this.configService.get('tg-bot.messages.startNewSession');
+        await ctx.reply(startNewSessionText);
       } else {
-        await ctx.reply(`Ok, let's continue!`);
+        const continueSessionText = this.configService.get('tg-bot.messages.continueSession');
+        await ctx.reply(continueSessionText);
       }
       await this.cacheService.set(ctx.user.id, questionnaireData);
       await this.showQuestion(ctx, questionnaireData);
@@ -56,7 +58,8 @@ export class TgBotService {
       const cachedData = await this.cacheService.get(ctx.user.id);
       const questionnaireData = cachedData ? cachedData : this.questionnaireService.startNewSession(ctx);
       questionnaireData.currentQuestionIndex = 0;
-      await ctx.reply(`Ok, let's start from the beginning!`);
+      const restartSessionText = this.configService.get('tg-bot.messages.restartSession');
+      await ctx.reply(restartSessionText);
       await this.cacheService.set(ctx.user.id, questionnaireData);
       await this.showQuestion(ctx, questionnaireData);
     } catch (error) {
@@ -68,13 +71,14 @@ export class TgBotService {
   async editLastReply(ctx: TelegrafContextWithUser): Promise<void> {
     const questionnaireData = await this.cacheService.get(ctx.user.id);
     if (!questionnaireData) {
-      await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+      await ctx.reply(this.sessionRestartRequiredText);
       await this.restart(ctx);
       return;
     }
 
     if (questionnaireData.currentQuestionIndex === 0) {
-      await ctx.reply('This is the first question');
+      const firstQuestionEditText = this.configService.get('tg-bot.messages.firstQuestionEdit');
+      await ctx.reply(firstQuestionEditText);
       return;
     }
 
@@ -177,7 +181,7 @@ export class TgBotService {
       const questionnaireData = await this.cacheService.get(ctx.user.id);
 
       if (!questionnaireData) {
-        await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        await ctx.reply(this.sessionRestartRequiredText);
         await this.restart(ctx);
         return;
       }
@@ -203,7 +207,7 @@ export class TgBotService {
       const questionnaireData = await this.cacheService.get(ctx.user.id);
 
       if (!questionnaireData) {
-        await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        await ctx.reply(this.sessionRestartRequiredText);
         await this.restart(ctx);
         return;
       }
@@ -222,7 +226,7 @@ export class TgBotService {
       const questionnaireData = await this.cacheService.get(ctx.user.id);
 
       if (!questionnaireData) {
-        await ctx.reply('Sorry for the inconvenience, we need to restart your session.');
+        await ctx.reply(this.sessionRestartRequiredText);
         await this.restart(ctx);
         return;
       }
@@ -284,12 +288,11 @@ export class TgBotService {
   async completeQuestionnaire(questionnaire: Questionnaire): Promise<void> {
     try {
       const { userId, userInfo } = questionnaire;
+      await this.tgBot.telegram.sendMessage(userId, this.configService.get('tg-bot.messages.userSurveycomplete'));
+
       const date = new Date();
-      await this.tgBot.telegram.sendMessage(
-        userId,
-        'Thank you for your answers!\n\nPlease reach out to @DriadaRoids to get the results.',
-      );
-      const responseHeader = `${date}\nПользователь ${userInfo} заполнил опрос:\n\n`;
+      const adminSurveyCompleteText = this.configService.get('tg-bot.messages.adminSurveycomplete');
+      const responseHeader = `${date}\n${adminSurveyCompleteText}\n${userInfo}\n\n`;
       const responseBody = questionnaire.questions
         .filter((q) => q.type !== 'picture' && q.response !== 'skipped')
         .map((q) => `*${q.responseKey}:*\n${q.response}`)
@@ -312,7 +315,10 @@ export class TgBotService {
       this.cacheService.delete(userId);
     } catch (error) {
       this.logger.error('completeQuestionnaire', error);
-      await this.tgBot.telegram.sendMessage(this.adminId, 'Произошла ошибка при отправке отчета');
+      await this.tgBot.telegram.sendMessage(
+        this.adminId,
+        this.configService.get('tg-bot.messages.adminSurveyCompleteError'),
+      );
     }
   }
 }
