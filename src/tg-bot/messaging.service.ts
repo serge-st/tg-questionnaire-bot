@@ -32,6 +32,7 @@ export class MessagingService {
         reply_markup: {
           inline_keyboard: this.inlineKeyboardService.renderLink(placeholder, url),
         },
+        parse_mode: 'Markdown',
       });
     } else {
       await ctx.reply(text, {

@@ -2,6 +2,9 @@ import { Question } from 'tg-bot/questionnaire';
 
 export const questions: Question[] = [
   {
+    preMessage: {
+      text: '*Step 1 GENERAL DATA*',
+    },
     text: 'Please enter your email',
     responseKey: 'Email',
     placeholder: 'E.g.: me@domain.com',
@@ -43,6 +46,9 @@ export const questions: Question[] = [
     responseKey: 'Chronic Diseases',
   },
   {
+    preMessage: {
+      text: '*Step 2 PREVIOUS EXPERIENCE*',
+    },
     text: 'Is this your first cycle?',
     type: 'boolean',
     responseKey: 'Is First Cycle',
@@ -58,7 +64,7 @@ export const questions: Question[] = [
       { label: 'Something in between', value: 'average' },
     ],
     preMessage: {
-      text: 'Please read the article where you can learn about 3 possible concepts of building a plan for the first cycle:',
+      text: '*Step 3 YOUR FIRST CYCLE*\n\nPlease read the article where you can learn about 3 possible concepts of building a plan for the first cycle:',
       link: {
         placeholder: 'Link to the article',
         url: 'https://telegra.ph/THREE-CONCEPTS-ON-WHAT-THE-FIRST-CYCLE-OF-STEROIDS-SHOULD-BE-11-28',
@@ -66,6 +72,9 @@ export const questions: Question[] = [
     },
   },
   {
+    preMessage: {
+      text: '*Step 3 PREVIOUS CYCLE*',
+    },
     skipIf: { 'Is First Cycle': true },
     text: 'How long was your previous cycle?',
     type: 'string',
@@ -84,6 +93,9 @@ export const questions: Question[] = [
     responseKey: 'Previous Cycle Results',
   },
   {
+    preMessage: {
+      text: '*Step 4 YOUR FUTURE CYCLE*',
+    },
     skipIf: { 'Is First Cycle': true },
     text: 'Choose your goal:',
     type: 'options',
@@ -97,6 +109,19 @@ export const questions: Question[] = [
     ],
   },
   {
+    skipIf: { 'Is First Cycle': false },
+    preMessage: {
+      text: '*Step 4 VISUAL ASSESSMENT*',
+    },
+    text: 'Please, send a picture of your current shape',
+    responseKey: 'Current Shape',
+    type: 'picture',
+  },
+  {
+    skipIf: { 'Is First Cycle': true },
+    preMessage: {
+      text: '*Step 5 VISUAL ASSESSMENT*',
+    },
     text: 'Please, send a picture of your current shape',
     responseKey: 'Current Shape',
     type: 'picture',

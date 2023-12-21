@@ -58,7 +58,7 @@ export class QuestionnaireService {
       .join('\n\n');
 
     // currently can handle only 1 picture per questionnaire
-    const responsePicture = questionnaire.questions.find((q) => q.type === 'picture');
+    const responsePicture = questionnaire.questions.find((q) => q.type === 'picture' && q.response !== 'skipped');
     const imageUrl = responsePicture.response.toString();
     const { data: responseData } = await axios.get<ArrayBuffer>(imageUrl, {
       responseType: 'arraybuffer',
