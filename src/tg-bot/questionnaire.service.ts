@@ -10,6 +10,7 @@ export type QuestionnaireCompletionReport = [string, string, ArrayBuffer];
 @Injectable()
 export class QuestionnaireService {
   constructor(private readonly configService: ConfigService) {}
+
   getQuestionData(questionnaire: Questionnaire): [InputDataType, string, string | undefined] {
     const question = questionnaire.questions[questionnaire.currentQuestionIndex];
     const { text, placeholder, type } = question;

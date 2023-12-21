@@ -141,17 +141,24 @@ export class TgBotService {
   async checkPictureAnswer(ctx: TelegrafContextWithUser): Promise<void> {
     if (!('message' in ctx.update)) throw new Error('No message');
     if (!('photo' in ctx.update.message)) throw new Error('No photo');
-    const questionnaireData = await this.cacheService.get(ctx.user.id);
+    const questionnaire = await this.cacheService.get(ctx.user.id);
 
-    if (!questionnaireData) {
+    if (!questionnaire) {
       await ctx.reply(this.sessionRestartRequiredText);
       await this.restart(ctx);
       return;
     }
 
+    const [type] = this.questionnaireService.getQuestionData(questionnaire);
+    if (type !== 'picture') {
+      await this.messagingService.sendInvalidAnswerMessage(ctx, ['The reply should not be a picture']);
+      await this.showQuestion(ctx, questionnaire);
+      return;
+    }
+
     const { file_id } = ctx.update.message.photo.at(-1);
     const fileLink = (await ctx.telegram.getFileLink(file_id)).toString();
-    this.processResponse(ctx, fileLink, questionnaireData);
+    this.processResponse(ctx, fileLink, questionnaire);
   }
 
   @CatchError((instance: TgBotService) => instance.serviceErrorText)
