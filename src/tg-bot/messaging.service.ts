@@ -11,12 +11,14 @@ import { QuestionnaireCompletionReport } from './questionnaire.service';
 @Injectable()
 export class MessagingService {
   private readonly adminId: number;
+  private readonly sessionRestartRequiredText: string;
   constructor(
     @InjectBot('tg-bot') private tgBot: Telegraf<Context>,
     private readonly configService: ConfigService,
     private readonly inlineKeyboardService: InlineKeyboardService,
   ) {
     this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
+    this.sessionRestartRequiredText = this.configService.get('tg-bot.messages.sessionRestartRequired');
   }
 
   async sendPreMessage(ctx: TelegrafContext, questionnaire: Questionnaire): Promise<void> {
@@ -73,6 +75,10 @@ export class MessagingService {
     for (const error of errors) {
       await ctx.reply(error);
     }
+  }
+
+  async sendRestartRequiredMessage(ctx: TelegrafContext): Promise<void> {
+    await ctx.reply(this.sessionRestartRequiredText);
   }
 
   async sendCompletionMessages(userId: number, report: QuestionnaireCompletionReport): Promise<void> {
