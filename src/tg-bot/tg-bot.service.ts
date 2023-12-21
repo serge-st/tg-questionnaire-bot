@@ -1,32 +1,26 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { InjectBot } from 'nestjs-telegraf';
-import { Context, Telegraf } from 'telegraf';
 import { TelegrafContext, TelegrafContextWithUser } from './types';
 import { CacheService } from './cache.service';
-import { ValidationService, ValidationResult } from './validation.service';
-import { InlineKeyboardService } from './inline-keyboard.service';
-import { Questionnaire } from './questionnaire';
+import { ValidationService } from './validation.service';
 import { QuestionnaireService } from './questionnaire.service';
+import { MessagingService } from './messaging.service';
+import { Questionnaire } from './questionnaire';
 import { CatchError } from './decorators';
 
 @Injectable()
 export class TgBotService {
-  private readonly logger = new Logger(TgBotService.name);
   private readonly serviceErrorText: string;
   private readonly sessionRestartRequiredText: string;
-  private readonly adminId: number;
   constructor(
-    @InjectBot('tg-bot') private tgBot: Telegraf<Context>,
     private readonly cacheService: CacheService,
     private readonly configService: ConfigService,
     private readonly validationService: ValidationService,
-    private readonly inlineKeyboardService: InlineKeyboardService,
     private readonly questionnaireService: QuestionnaireService,
+    private readonly messagingService: MessagingService,
   ) {
     this.serviceErrorText = this.configService.get('tg-bot.messages.serviceError');
     this.sessionRestartRequiredText = this.configService.get('tg-bot.messages.sessionRestartRequired');
-    this.adminId = Number(this.configService.get<number>('TG_BOT_ADMIN_ID'));
   }
 
   @CatchError((instance: TgBotService) => instance.serviceErrorText)
@@ -83,88 +77,40 @@ export class TgBotService {
   }
 
   @CatchError((instance: TgBotService) => instance.serviceErrorText)
-  async showPreMessage(ctx: TelegrafContext, questionnaireData: Questionnaire): Promise<void> {
-    const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
-    const { preMessage } = question;
-    if (!preMessage) return;
-    const { text, link } = preMessage;
-    if (link) {
-      const { placeholder, url } = link;
-      await ctx.reply(text, {
-        reply_markup: {
-          inline_keyboard: this.inlineKeyboardService.renderLink(placeholder, url),
-        },
-      });
-    } else {
-      await ctx.reply(text, {
-        parse_mode: 'Markdown',
-      });
-    }
-  }
-
-  @CatchError((instance: TgBotService) => instance.serviceErrorText)
   async showQuestion(ctx: TelegrafContextWithUser, questionnaireData: Questionnaire): Promise<void> {
     const shouldSkip = this.questionnaireService.shouldSkip(questionnaireData);
     if (shouldSkip) {
       await this.processResponse(ctx, 'skipped', questionnaireData);
       return;
     }
-    await this.showPreMessage(ctx, questionnaireData);
+    await this.messagingService.sendPreMessage(ctx, questionnaireData);
     const [type, text, placeholder] = this.questionnaireService.getQuestionData(questionnaireData);
 
     switch (type) {
       case 'boolean':
-        await this.showBooleanQuestion(ctx, text);
+        await this.messagingService.sendBooleanQuestion(ctx, text);
         break;
       case 'options':
-        await this.showOptionsQuestion(ctx, questionnaireData);
+        await this.messagingService.sendOptionsQuestion(ctx, questionnaireData);
         break;
       default:
-        await this.showTextQuestion(ctx, text, placeholder);
+        await this.messagingService.sendTextQuestion(ctx, text, placeholder);
         break;
     }
-  }
-
-  async showTextQuestion(ctx: TelegrafContext, text: string, placeholder: string): Promise<void> {
-    await ctx.reply(text, {
-      reply_markup: {
-        force_reply: true,
-        input_field_placeholder: placeholder ?? '',
-      },
-    });
-  }
-
-  async showBooleanQuestion(ctx: TelegrafContext, text: string): Promise<void> {
-    await ctx.reply(text, {
-      reply_markup: {
-        force_reply: true,
-        input_field_placeholder: '',
-        inline_keyboard: this.inlineKeyboardService.renderBooleanSelector(),
-      },
-    });
-  }
-
-  async showOptionsQuestion(ctx: TelegrafContext, questionnaireData: Questionnaire): Promise<void> {
-    const question = questionnaireData.questions[questionnaireData.currentQuestionIndex];
-    const { text, options } = question;
-    await ctx.reply(text, {
-      reply_markup: {
-        force_reply: true,
-        input_field_placeholder: '',
-        inline_keyboard: this.inlineKeyboardService.renderOptions(options),
-      },
-    });
   }
 
   @CatchError((instance: TgBotService) => instance.serviceErrorText)
-  async processResponse(ctx: TelegrafContextWithUser, text: string, questionnaireData: Questionnaire): Promise<void> {
-    this.questionnaireService.addResponse(text, questionnaireData);
-    if (this.questionnaireService.isQuestionnaireComplete(questionnaireData)) {
-      await this.sendCompletionMessages(questionnaireData);
+  async processResponse(ctx: TelegrafContextWithUser, text: string, questionnaire: Questionnaire): Promise<void> {
+    this.questionnaireService.addResponse(text, questionnaire);
+    if (this.questionnaireService.isQuestionnaireComplete(questionnaire)) {
+      const { userId } = questionnaire;
+      const report = await this.questionnaireService.getQuestionnareCompletionReport(questionnaire);
+      await this.messagingService.sendCompletionMessages(userId, report);
+      this.cacheService.delete(userId);
       return;
     }
-    await this.cacheService.set(ctx.user.id, questionnaireData);
-    await this.showQuestion(ctx, questionnaireData);
+    await this.cacheService.set(ctx.user.id, questionnaire);
+    await this.showQuestion(ctx, questionnaire);
   }
 
   @CatchError((instance: TgBotService) => instance.serviceErrorText)
@@ -186,7 +132,7 @@ export class TgBotService {
 
     if (type === 'options' || type === 'boolean') return this.checkOptionsAnswer(ctx);
     const { isValid, errors } = await this.validationService.validate[type](text);
-    if (!isValid) return await this.sendInvalidAnswerMessage(ctx, errors);
+    if (!isValid) return await this.messagingService.sendInvalidAnswerMessage(ctx, errors);
 
     this.processResponse(ctx, text, questionnaireData);
   }
@@ -228,8 +174,8 @@ export class TgBotService {
         case 'boolean': {
           const { isValid, errors } = await this.validationService.validate[type](text);
           if (!isValid) {
-            await this.sendInvalidAnswerMessage(ctx, errors);
-            await this.showBooleanQuestion(ctx, questionText);
+            await this.messagingService.sendInvalidAnswerMessage(ctx, errors);
+            await this.messagingService.sendBooleanQuestion(ctx, questionText);
             return;
           }
 
@@ -241,8 +187,8 @@ export class TgBotService {
           const optionStrings = question.options.map((option) => option.value.toString());
           const { isValid, errors } = await this.validationService.validate[type](text, optionStrings);
           if (!isValid) {
-            await this.sendInvalidAnswerMessage(ctx, errors);
-            await this.showOptionsQuestion(ctx, questionnaireData);
+            await this.messagingService.sendInvalidAnswerMessage(ctx, errors);
+            await this.messagingService.sendOptionsQuestion(ctx, questionnaireData);
             return;
           }
 
@@ -258,38 +204,6 @@ export class TgBotService {
     if ('callback_query' in ctx.update && 'data' in ctx.update.callback_query) {
       const { data } = ctx.update.callback_query;
       this.processResponse(ctx, data, questionnaireData);
-    }
-  }
-
-  async sendInvalidAnswerMessage(ctx: TelegrafContext, errors: ValidationResult['errors']): Promise<void> {
-    for (const error of errors) {
-      await ctx.reply(error);
-    }
-  }
-
-  async sendCompletionMessages(questionnaire: Questionnaire): Promise<void> {
-    try {
-      const { userId } = questionnaire;
-      await this.tgBot.telegram.sendMessage(userId, this.configService.get('tg-bot.messages.userSurveycomplete'));
-
-      const [responseHeader, responseBody, responseData] =
-        await this.questionnaireService.getQuestionnareCompletionReport(questionnaire);
-
-      await this.tgBot.telegram.sendMessage(this.adminId, responseHeader);
-      await this.tgBot.telegram.sendMessage(this.adminId, responseBody, {
-        parse_mode: 'Markdown',
-      });
-      await this.tgBot.telegram.sendPhoto(this.adminId, {
-        source: Buffer.from(responseData),
-      });
-
-      this.cacheService.delete(userId);
-    } catch (error) {
-      this.logger.error('completeQuestionnaire', error);
-      await this.tgBot.telegram.sendMessage(
-        this.adminId,
-        this.configService.get('tg-bot.messages.adminSurveyCompleteError'),
-      );
     }
   }
 }
