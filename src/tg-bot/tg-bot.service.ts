@@ -77,68 +77,7 @@ export class TgBotService {
   }
 
   @CatchError((instance: TgBotService) => instance.serviceErrorText)
-  async showQuestion(ctx: TelegrafContextWithUser, questionnaireData: Questionnaire): Promise<void> {
-    const shouldSkip = this.questionnaireService.shouldSkip(questionnaireData);
-    if (shouldSkip) {
-      await this.processResponse(ctx, 'skipped', questionnaireData);
-      return;
-    }
-    await this.messagingService.sendPreMessage(ctx, questionnaireData);
-    const [type, text, placeholder] = this.questionnaireService.getQuestionData(questionnaireData);
-
-    switch (type) {
-      case 'boolean':
-        await this.messagingService.sendBooleanQuestion(ctx, text);
-        break;
-      case 'options':
-        await this.messagingService.sendOptionsQuestion(ctx, questionnaireData);
-        break;
-      default:
-        await this.messagingService.sendTextQuestion(ctx, text, placeholder);
-        break;
-    }
-  }
-
-  @CatchError((instance: TgBotService) => instance.serviceErrorText)
-  async processResponse(ctx: TelegrafContextWithUser, text: string, questionnaire: Questionnaire): Promise<void> {
-    this.questionnaireService.addResponse(text, questionnaire);
-    if (this.questionnaireService.isQuestionnaireComplete(questionnaire)) {
-      const { userId } = questionnaire;
-      const report = await this.questionnaireService.getQuestionnareCompletionReport(questionnaire);
-      await this.messagingService.sendCompletionMessages(userId, report);
-      this.cacheService.delete(userId);
-      return;
-    }
-    await this.cacheService.set(ctx.user.id, questionnaire);
-    await this.showQuestion(ctx, questionnaire);
-  }
-
-  @CatchError((instance: TgBotService) => instance.serviceErrorText)
-  async checkAnswer(ctx: TelegrafContextWithUser): Promise<void> {
-    const currentUpdate = ctx.update;
-    if (!('message' in currentUpdate)) throw new Error('No message');
-    if ('photo' in currentUpdate.message) return this.checkPictureAnswer(ctx);
-    if (!('text' in currentUpdate.message)) throw new Error('No text');
-    const questionnaireData = await this.cacheService.get(ctx.user.id);
-
-    if (!questionnaireData) {
-      await ctx.reply(this.sessionRestartRequiredText);
-      await this.restart(ctx);
-      return;
-    }
-
-    const { text } = currentUpdate.message;
-    const [type] = this.questionnaireService.getQuestionData(questionnaireData);
-
-    if (type === 'options' || type === 'boolean') return this.checkOptionsAnswer(ctx);
-    const { isValid, errors } = await this.validationService.validate[type](text);
-    if (!isValid) return await this.messagingService.sendInvalidAnswerMessage(ctx, errors);
-
-    this.processResponse(ctx, text, questionnaireData);
-  }
-
-  @CatchError((instance: TgBotService) => instance.serviceErrorText)
-  async checkPictureAnswer(ctx: TelegrafContextWithUser): Promise<void> {
+  async checkPhotoAnswer(ctx: TelegrafContextWithUser): Promise<void> {
     if (!('message' in ctx.update)) throw new Error('No message');
     if (!('photo' in ctx.update.message)) throw new Error('No photo');
     const questionnaire = await this.cacheService.get(ctx.user.id);
@@ -159,6 +98,29 @@ export class TgBotService {
     const { file_id } = ctx.update.message.photo.at(-1);
     const fileLink = (await ctx.telegram.getFileLink(file_id)).toString();
     this.processResponse(ctx, fileLink, questionnaire);
+  }
+
+  @CatchError((instance: TgBotService) => instance.serviceErrorText)
+  async checkAnswer(ctx: TelegrafContextWithUser): Promise<void> {
+    const currentUpdate = ctx.update;
+    if (!('message' in currentUpdate)) throw new Error('No message');
+    if (!('text' in currentUpdate.message)) throw new Error('No text');
+    const questionnaireData = await this.cacheService.get(ctx.user.id);
+
+    if (!questionnaireData) {
+      await ctx.reply(this.sessionRestartRequiredText);
+      await this.restart(ctx);
+      return;
+    }
+
+    const { text } = currentUpdate.message;
+    const [type] = this.questionnaireService.getQuestionData(questionnaireData);
+
+    if (type === 'options' || type === 'boolean') return this.checkOptionsAnswer(ctx);
+    const { isValid, errors } = await this.validationService.validate[type](text);
+    if (!isValid) return await this.messagingService.sendInvalidAnswerMessage(ctx, errors);
+
+    this.processResponse(ctx, text, questionnaireData);
   }
 
   @CatchError((instance: TgBotService) => instance.serviceErrorText)
@@ -212,5 +174,42 @@ export class TgBotService {
       const { data } = ctx.update.callback_query;
       this.processResponse(ctx, data, questionnaireData);
     }
+  }
+
+  @CatchError((instance: TgBotService) => instance.serviceErrorText)
+  async showQuestion(ctx: TelegrafContextWithUser, questionnaireData: Questionnaire): Promise<void> {
+    const shouldSkip = this.questionnaireService.shouldSkip(questionnaireData);
+    if (shouldSkip) {
+      await this.processResponse(ctx, 'skipped', questionnaireData);
+      return;
+    }
+    await this.messagingService.sendPreMessage(ctx, questionnaireData);
+    const [type, text, placeholder] = this.questionnaireService.getQuestionData(questionnaireData);
+
+    switch (type) {
+      case 'boolean':
+        await this.messagingService.sendBooleanQuestion(ctx, text);
+        break;
+      case 'options':
+        await this.messagingService.sendOptionsQuestion(ctx, questionnaireData);
+        break;
+      default:
+        await this.messagingService.sendTextQuestion(ctx, text, placeholder);
+        break;
+    }
+  }
+
+  @CatchError((instance: TgBotService) => instance.serviceErrorText)
+  async processResponse(ctx: TelegrafContextWithUser, text: string, questionnaire: Questionnaire): Promise<void> {
+    this.questionnaireService.addResponse(text, questionnaire);
+    if (this.questionnaireService.isQuestionnaireComplete(questionnaire)) {
+      const { userId } = questionnaire;
+      const report = await this.questionnaireService.getQuestionnareCompletionReport(questionnaire);
+      await this.messagingService.sendCompletionMessages(userId, report);
+      this.cacheService.delete(userId);
+      return;
+    }
+    await this.cacheService.set(ctx.user.id, questionnaire);
+    await this.showQuestion(ctx, questionnaire);
   }
 }

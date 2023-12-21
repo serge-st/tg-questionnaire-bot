@@ -30,7 +30,7 @@ export class TgBotUppdate {
 
   @On('photo')
   async handlePhoto(@Ctx() ctx: TelegrafContextWithUser) {
-    await this.tgBotService.checkAnswer(ctx);
+    await this.tgBotService.checkPhotoAnswer(ctx);
   }
 
   @On('text')
