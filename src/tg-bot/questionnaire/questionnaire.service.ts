@@ -1,9 +1,9 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
-import { TelegrafContextWithUser } from './types';
-import { Questionnaire, AnswerData, Question } from './questionnaire';
-import { InputDataType } from './validation.service';
+import { TelegrafContextWithUser } from 'tg-bot/common/types';
+import { InputDataType } from 'tg-bot/validation';
+import { Questionnaire, AnswerData, Question } from './questionnaire.model';
 
 export type QuestionnaireCompletionReport = [string, string, ArrayBuffer];
 

@@ -1,4 +1,4 @@
-import { InputDataType } from './validation.service';
+import { InputDataType } from 'tg-bot/validation';
 
 export type Question = {
   text: string;

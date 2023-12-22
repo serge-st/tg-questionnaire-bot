@@ -1,7 +1,7 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import { Cache } from 'cache-manager';
-import { Questionnaire } from './questionnaire';
+import { Questionnaire } from 'tg-bot/questionnaire';
 
 @Injectable()
 export class CacheService {

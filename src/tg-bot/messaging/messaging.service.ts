@@ -2,11 +2,10 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { InjectBot } from 'nestjs-telegraf';
 import { Context, Telegraf } from 'telegraf';
+import { TelegrafContext } from 'tg-bot/types';
+import { Questionnaire, QuestionnaireCompletionReport } from 'tg-bot/questionnaire';
+import { ValidationResult } from 'tg-bot/validation';
 import { InlineKeyboardService } from './inline-keyboard.service';
-import { TelegrafContext } from './types';
-import { Questionnaire } from './questionnaire';
-import { ValidationResult } from './validation.service';
-import { QuestionnaireCompletionReport } from './questionnaire.service';
 
 @Injectable()
 export class MessagingService {

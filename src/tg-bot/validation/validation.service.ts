@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { validate as cvValidate } from 'class-validator';
-import { StringInputDTO, NumberInputDTO, EmailInputDTO, BooleanInputDTO, OptionsInputDTO } from 'tg-bot/dto';
+import { StringInputDTO, NumberInputDTO, EmailInputDTO, BooleanInputDTO, OptionsInputDTO } from 'tg-bot/common/dto';
 
 export type InputDataType = keyof ValidationService['validate'];
 export type ValidationResult = {

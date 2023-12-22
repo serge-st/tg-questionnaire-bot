@@ -1,12 +1,12 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { TelegrafContext, TelegrafContextWithUser } from './types';
-import { CacheService } from './cache.service';
-import { ValidationService } from './validation.service';
-import { QuestionnaireService } from './questionnaire.service';
-import { MessagingService } from './messaging.service';
-import { Questionnaire } from './questionnaire';
-import { CatchError } from './decorators';
+import { TelegrafContext, TelegrafContextWithUser } from 'tg-bot/types';
+import { CacheService } from 'tg-bot/cache';
+import { MessagingService } from 'tg-bot/messaging';
+import { ValidationService } from 'tg-bot/validation';
+import { QuestionnaireService } from 'tg-bot/questionnaire';
+import { Questionnaire } from 'tg-bot/questionnaire';
+import { CatchError } from 'tg-bot/common/decorators';
 
 @Injectable()
 export class TgBotService {
