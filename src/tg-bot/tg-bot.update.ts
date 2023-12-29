@@ -1,15 +1,14 @@
-import { Logger } from '@nestjs/common';
 import { Update, Ctx, Start, On, Help, Hears } from 'nestjs-telegraf';
 import { TelegrafContextWithUser } from 'tg-bot/types';
 import { TgBotService } from './tg-bot.service';
 
 @Update()
 export class TgBotUppdate {
-  private readonly logger = new Logger(TgBotUppdate.name);
   constructor(private readonly tgBotService: TgBotService) {}
 
   @Start()
   async start(@Ctx() ctx: TelegrafContextWithUser) {
+    console.log('start');
     await this.tgBotService.start(ctx);
   }
 
