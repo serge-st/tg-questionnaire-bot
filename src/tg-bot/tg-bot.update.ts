@@ -8,7 +8,6 @@ export class TgBotUppdate {
 
   @Start()
   async start(@Ctx() ctx: TelegrafContextWithUser) {
-    console.log('start');
     await this.tgBotService.start(ctx);
   }
 
