@@ -85,14 +85,12 @@ export class MessagingService {
     try {
       await this.tgBot.telegram.sendMessage(userId, this.configService.get('tg-bot.messages.userSurveycomplete'));
 
-      const [responseHeader, responseBody, responseData] = report;
+      const [responseHeader, responseBody, responsePictureId] = report;
       await this.tgBot.telegram.sendMessage(this.adminId, responseHeader);
       await this.tgBot.telegram.sendMessage(this.adminId, responseBody, {
         parse_mode: 'Markdown',
       });
-      await this.tgBot.telegram.sendPhoto(this.adminId, {
-        source: Buffer.from(responseData),
-      });
+      await this.tgBot.telegram.sendPhoto(this.adminId, responsePictureId);
     } catch (error) {
       const logger = new Logger(MessagingService.name);
       logger.error('sendCompletionMessages', error);

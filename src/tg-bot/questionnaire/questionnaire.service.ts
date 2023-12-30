@@ -1,11 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
 import { TelegrafContextWithUser } from 'tg-bot/common/types';
 import { InputDataType } from 'tg-bot/validation';
 import { Questionnaire, AnswerData, Question } from './questionnaire.model';
 
-export type QuestionnaireCompletionReport = [string, string, ArrayBuffer];
+export type QuestionnaireCompletionReport = [string, string, string];
 
 @Injectable()
 export class QuestionnaireService {
@@ -58,12 +57,11 @@ export class QuestionnaireService {
       .join('\n\n');
 
     // currently can handle only 1 picture per questionnaire
-    const responsePicture = questionnaire.questions.find((q) => q.type === 'picture' && q.response !== 'skipped');
-    const imageUrl = responsePicture.response.toString();
-    const { data: responseData } = await axios.get<ArrayBuffer>(imageUrl, {
-      responseType: 'arraybuffer',
-    });
+    const { response: responsePictureId } = questionnaire.questions.find(
+      (q) => q.type === 'picture' && q.response !== 'skipped',
+    );
 
-    return [responseHeader, responseBody, responseData];
+    if (typeof responsePictureId !== 'string') throw new Error('Error processing picture response');
+    return [responseHeader, responseBody, responsePictureId];
   }
 }

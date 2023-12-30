@@ -86,8 +86,7 @@ export class TgBotService {
     }
 
     const { file_id } = ctx.update.message.photo.at(-1);
-    const fileLink = (await ctx.telegram.getFileLink(file_id)).toString();
-    this.processResponse(ctx, fileLink, questionnaire);
+    this.processResponse(ctx, file_id, questionnaire);
   }
 
   @CatchError((instance: TgBotService) => instance.serviceErrorText)
